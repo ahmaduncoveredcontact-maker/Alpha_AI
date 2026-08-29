@@ -11,8 +11,9 @@ export async function POST(req: NextRequest) {
     response.cookies.set('admin_session', 'authenticated', {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      maxAge: 60 * 60 * 24,
+      maxAge: 60 * 60 * 24, // 1 day
       path: '/',
+      sameSite: 'lax',
     });
     return response;
   } else {
