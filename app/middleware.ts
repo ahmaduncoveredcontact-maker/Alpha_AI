@@ -4,7 +4,7 @@ import type { NextRequest } from 'next/server';
 export function middleware(request: NextRequest) {
   const path = request.nextUrl.pathname;
 
-  // Admin routes protection (except login page and auth API)
+  // Admin routes protection
   if (path.startsWith('/admin') || path.startsWith('/api/admin')) {
     if (path === '/admin-login' || path === '/api/admin/auth') {
       return NextResponse.next();
@@ -22,26 +22,16 @@ export function middleware(request: NextRequest) {
     const adminSession = request.cookies.get('admin_session');
     const slug = path.split('/')[2];
 
-    if (!clientSession) {
-      // If admin is logged in, auto-login the client
-      if (adminSession && adminSession.value === 'authenticated' && slug) {
-        // Set client session and allow access
-        const response = NextResponse.next();
-        response.cookies.set('client_session', slug, {
-          httpOnly: true,
-          secure: process.env.NODE_ENV === 'production',
-          maxAge: 60 * 60 * 24 * 7,
-          path: '/',
-          sameSite: 'lax',
-        });
-        return response;
+    if (!clientSession && slug) {
+      // If admin is logged in, redirect to auto-login endpoint
+      if (adminSession && adminSession.value === 'authenticated') {
+        const autoLoginUrl = new URL(`/api/client/auto-login?slug=${slug}`, request.url);
+        return NextResponse.redirect(autoLoginUrl);
       }
 
       // No admin session – redirect to client login
-      if (slug) {
-        const loginUrl = new URL(`/live/${slug}/login`, request.url);
-        return NextResponse.redirect(loginUrl);
-      }
+      const loginUrl = new URL(`/live/${slug}/login`, request.url);
+      return NextResponse.redirect(loginUrl);
     }
   }
 
