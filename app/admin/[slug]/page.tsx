@@ -1,8 +1,17 @@
+import { cookies } from 'next/headers';
+import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { notFound } from 'next/navigation';
 import EditClientForm from '@/components/admin/EditClientForm';
 
 export default async function EditClientPage({ params }: { params: { slug: string } }) {
+  // Auth check
+  const cookieStore = await cookies();
+  const session = cookieStore.get('admin_session');
+  if (!session || session.value !== 'authenticated') {
+    redirect('/admin-login');
+  }
+
   const supabase = await createClient();
   const { data: client, error } = await supabase
     .from('clients')

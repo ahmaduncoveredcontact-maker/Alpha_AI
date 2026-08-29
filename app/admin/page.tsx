@@ -1,7 +1,16 @@
+import { cookies } from 'next/headers';
+import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import Link from 'next/link';
 
 export default async function AdminDashboardPage() {
+  // Auth check
+  const cookieStore = await cookies();
+  const session = cookieStore.get('admin_session');
+  if (!session || session.value !== 'authenticated') {
+    redirect('/admin-login');
+  }
+
   const supabase = await createClient();
   const { data: clients, error } = await supabase
     .from('clients')
