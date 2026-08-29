@@ -2,6 +2,7 @@ import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import Link from 'next/link';
+import { Pencil, ExternalLink, Users, CheckCircle, Clock } from 'lucide-react';
 
 export default async function AdminDashboardPage() {
   // Auth check
@@ -22,13 +23,12 @@ export default async function AdminDashboardPage() {
     return <div className="p-8 text-red-600">Error loading clients</div>;
   }
 
-  // Stats
   const total = clients?.length || 0;
   const active = clients?.filter(c => c.vapi_assistant_id).length || 0;
   const pending = total - active;
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-gray-100">
       {/* Header */}
       <header className="bg-gradient-to-r from-gray-900 to-gray-700 text-white shadow-lg">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-5 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
@@ -51,31 +51,31 @@ export default async function AdminDashboardPage() {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Stats Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
-          <div className="bg-white rounded-xl shadow-sm p-5 border border-gray-100 flex items-center justify-between">
+          <div className="bg-white rounded-xl shadow-sm p-5 border border-gray-100 flex items-center justify-between hover:shadow-md transition-shadow">
             <div>
               <div className="text-sm text-gray-500 font-medium">Total Clients</div>
               <div className="text-3xl font-bold text-gray-800">{total}</div>
             </div>
-            <div className="p-3 bg-gray-100 rounded-full">
-              <svg className="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
+            <div className="p-3 bg-indigo-50 rounded-full">
+              <Users className="w-6 h-6 text-indigo-600" />
             </div>
           </div>
-          <div className="bg-white rounded-xl shadow-sm p-5 border border-gray-100 flex items-center justify-between">
+          <div className="bg-white rounded-xl shadow-sm p-5 border border-gray-100 flex items-center justify-between hover:shadow-md transition-shadow">
             <div>
               <div className="text-sm text-gray-500 font-medium">Active</div>
               <div className="text-3xl font-bold text-emerald-600">{active}</div>
             </div>
             <div className="p-3 bg-emerald-50 rounded-full">
-              <svg className="w-6 h-6 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+              <CheckCircle className="w-6 h-6 text-emerald-600" />
             </div>
           </div>
-          <div className="bg-white rounded-xl shadow-sm p-5 border border-gray-100 flex items-center justify-between">
+          <div className="bg-white rounded-xl shadow-sm p-5 border border-gray-100 flex items-center justify-between hover:shadow-md transition-shadow">
             <div>
               <div className="text-sm text-gray-500 font-medium">Pending Setup</div>
               <div className="text-3xl font-bold text-amber-600">{pending}</div>
             </div>
             <div className="p-3 bg-amber-50 rounded-full">
-              <svg className="w-6 h-6 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+              <Clock className="w-6 h-6 text-amber-600" />
             </div>
           </div>
         </div>
@@ -86,9 +86,9 @@ export default async function AdminDashboardPage() {
             <div className="flex flex-wrap gap-2">
               <Link
                 href="/admin/new"
-                className="bg-gray-900 text-white px-5 py-2 rounded-lg text-sm font-medium hover:bg-gray-800 transition-colors shadow-sm"
+                className="bg-gray-900 text-white px-5 py-2.5 rounded-lg text-sm font-medium hover:bg-gray-800 transition-colors shadow-sm inline-flex items-center gap-1.5"
               >
-                + New Client
+                <span className="text-lg leading-none">+</span> New Client
               </Link>
             </div>
             <div className="flex flex-wrap gap-2 w-full sm:w-auto">
@@ -114,12 +114,12 @@ export default async function AdminDashboardPage() {
         <div className="bg-white rounded-xl shadow-sm overflow-hidden border border-gray-100">
           <div className="overflow-x-auto">
             <table className="w-full text-sm" id="clientsTable">
-              <thead className="bg-gray-50 text-gray-500 font-medium">
+              <thead className="bg-gray-50 text-gray-500 font-medium border-b border-gray-200">
                 <tr>
-                  <th className="px-6 py-3 text-left">Business</th>
-                  <th className="px-6 py-3 text-left">Slug</th>
-                  <th className="px-6 py-3 text-left">Status</th>
-                  <th className="px-6 py-3 text-left">Actions</th>
+                  <th className="px-6 py-3.5 text-left">Business</th>
+                  <th className="px-6 py-3.5 text-left">Slug</th>
+                  <th className="px-6 py-3.5 text-left">Status</th>
+                  <th className="px-6 py-3.5 text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
@@ -128,19 +128,27 @@ export default async function AdminDashboardPage() {
                       data-status={client.vapi_assistant_id ? 'active' : 'pending'}
                       data-name={client.business_name.toLowerCase()}>
                     <td className="px-6 py-4 font-medium text-gray-800">{client.business_name}</td>
-                    <td className="px-6 py-4 text-gray-500">{client.slug}</td>
+                    <td className="px-6 py-4 text-gray-500 font-mono text-xs">{client.slug}</td>
                     <td className="px-6 py-4">
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                      <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${
                         client.vapi_assistant_id ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'
                       }`}>
                         {client.vapi_assistant_id ? 'Active' : 'Pending'}
                       </span>
                     </td>
-                    <td className="px-6 py-4 space-x-3">
-                      <Link href={`/admin/${client.slug}`} className="text-blue-600 hover:text-blue-800 font-medium">
+                    <td className="px-6 py-4 text-right space-x-2 whitespace-nowrap">
+                      <Link
+                        href={`/admin/${client.slug}`}
+                        className="inline-flex items-center gap-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
+                      >
+                        <Pencil className="w-3.5 h-3.5" />
                         Edit
                       </Link>
-                      <Link href={`/live/${client.slug}`} className="text-indigo-600 hover:text-indigo-800 font-medium">
+                      <Link
+                        href={`/live/${client.slug}`}
+                        className="inline-flex items-center gap-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
+                      >
+                        <ExternalLink className="w-3.5 h-3.5" />
                         Dashboard
                       </Link>
                     </td>
