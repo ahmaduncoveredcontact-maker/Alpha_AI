@@ -14,61 +14,133 @@ export default async function AdminDashboardPage() {
   const supabase = await createClient();
   const { data: clients, error } = await supabase
     .from('clients')
-    .select('id, business_name, slug, created_at, vapi_assistant_id')
+    .select('id, business_name, slug, created_at, vapi_assistant_id, qr_main_url')
     .order('created_at', { ascending: false });
 
   if (error) {
     console.error(error);
-    return <div className="text-red-600 p-4">Error loading clients</div>;
+    return <div className="p-8 text-red-600">Error loading clients</div>;
   }
 
+  // Stats
+  const total = clients?.length || 0;
+  const active = clients?.filter(c => c.vapi_assistant_id).length || 0;
+  const pending = total - active;
+
   return (
-    <div className="min-h-screen bg-gray-50 p-6 md:p-8">
-      <div className="max-w-7xl mx-auto">
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
-          <h1 className="text-3xl font-bold text-gray-900">Clients</h1>
-          <Link
-            href="/admin/new"
-            className="bg-black text-white px-6 py-3 rounded-lg shadow hover:bg-gray-800 transition-colors"
-          >
-            + Add New Client
-          </Link>
+    <div className="min-h-screen bg-gray-50">
+      {/* Header */}
+      <header className="bg-gradient-to-r from-gray-900 to-gray-700 text-white shadow-lg">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-5 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+          <div className="flex items-center space-x-3">
+            <div className="bg-white/10 rounded-lg px-3 py-1.5">
+              <span className="text-xl font-bold tracking-tight">α</span>
+            </div>
+            <div>
+              <h1 className="text-2xl font-bold tracking-tight">Alpha AI</h1>
+              <p className="text-gray-300 text-sm">Admin dashboard</p>
+            </div>
+          </div>
+          <div className="flex items-center space-x-3 text-sm">
+            <span className="text-gray-300 hidden sm:inline">Welcome back</span>
+            <span className="bg-white/20 px-3 py-1 rounded-full text-xs font-medium">Admin</span>
+          </div>
+        </div>
+      </header>
+
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Stats Cards */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
+          <div className="bg-white rounded-xl shadow-sm p-5 border border-gray-100 flex items-center justify-between">
+            <div>
+              <div className="text-sm text-gray-500 font-medium">Total Clients</div>
+              <div className="text-3xl font-bold text-gray-800">{total}</div>
+            </div>
+            <div className="p-3 bg-gray-100 rounded-full">
+              <svg className="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
+            </div>
+          </div>
+          <div className="bg-white rounded-xl shadow-sm p-5 border border-gray-100 flex items-center justify-between">
+            <div>
+              <div className="text-sm text-gray-500 font-medium">Active</div>
+              <div className="text-3xl font-bold text-emerald-600">{active}</div>
+            </div>
+            <div className="p-3 bg-emerald-50 rounded-full">
+              <svg className="w-6 h-6 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+            </div>
+          </div>
+          <div className="bg-white rounded-xl shadow-sm p-5 border border-gray-100 flex items-center justify-between">
+            <div>
+              <div className="text-sm text-gray-500 font-medium">Pending Setup</div>
+              <div className="text-3xl font-bold text-amber-600">{pending}</div>
+            </div>
+            <div className="p-3 bg-amber-50 rounded-full">
+              <svg className="w-6 h-6 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+            </div>
+          </div>
         </div>
 
-        <div className="bg-white rounded-xl shadow overflow-hidden">
+        {/* Actions & Filters */}
+        <div className="bg-white rounded-xl shadow-sm p-5 border border-gray-100 mb-6">
+          <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
+            <div className="flex flex-wrap gap-2">
+              <Link
+                href="/admin/new"
+                className="bg-gray-900 text-white px-5 py-2 rounded-lg text-sm font-medium hover:bg-gray-800 transition-colors shadow-sm"
+              >
+                + New Client
+              </Link>
+            </div>
+            <div className="flex flex-wrap gap-2 w-full sm:w-auto">
+              <input
+                type="text"
+                placeholder="Search by business..."
+                className="border border-gray-300 rounded-lg px-4 py-2 text-sm w-full sm:w-48 focus:ring-2 focus:ring-gray-700 focus:border-transparent"
+                id="searchInput"
+              />
+              <select
+                className="border border-gray-300 rounded-lg px-4 py-2 text-sm focus:ring-2 focus:ring-gray-700"
+                id="statusFilter"
+              >
+                <option value="all">All Status</option>
+                <option value="active">Active</option>
+                <option value="pending">Pending</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        {/* Clients Table */}
+        <div className="bg-white rounded-xl shadow-sm overflow-hidden border border-gray-100">
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="bg-gray-50 border-b">
+            <table className="w-full text-sm" id="clientsTable">
+              <thead className="bg-gray-50 text-gray-500 font-medium">
                 <tr>
-                  <th className="px-6 py-3 text-left font-medium text-gray-500">Business</th>
-                  <th className="px-6 py-3 text-left font-medium text-gray-500">Slug</th>
-                  <th className="px-6 py-3 text-left font-medium text-gray-500">Status</th>
-                  <th className="px-6 py-3 text-left font-medium text-gray-500">Actions</th>
+                  <th className="px-6 py-3 text-left">Business</th>
+                  <th className="px-6 py-3 text-left">Slug</th>
+                  <th className="px-6 py-3 text-left">Status</th>
+                  <th className="px-6 py-3 text-left">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y">
+              <tbody className="divide-y divide-gray-100">
                 {clients?.map((client) => (
-                  <tr key={client.id} className="hover:bg-gray-50 transition-colors">
-                    <td className="px-6 py-4 font-medium">{client.business_name}</td>
-                    <td className="px-6 py-4 text-gray-600">{client.slug}</td>
+                  <tr key={client.id} className="hover:bg-gray-50 transition-colors"
+                      data-status={client.vapi_assistant_id ? 'active' : 'pending'}
+                      data-name={client.business_name.toLowerCase()}>
+                    <td className="px-6 py-4 font-medium text-gray-800">{client.business_name}</td>
+                    <td className="px-6 py-4 text-gray-500">{client.slug}</td>
                     <td className="px-6 py-4">
                       <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                        client.vapi_assistant_id ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
+                        client.vapi_assistant_id ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'
                       }`}>
-                        {client.vapi_assistant_id ? 'Active' : 'Setup pending'}
+                        {client.vapi_assistant_id ? 'Active' : 'Pending'}
                       </span>
                     </td>
                     <td className="px-6 py-4 space-x-3">
-                      <Link
-                        href={`/admin/${client.slug}`}
-                        className="text-blue-600 hover:text-blue-800 font-medium"
-                      >
+                      <Link href={`/admin/${client.slug}`} className="text-blue-600 hover:text-blue-800 font-medium">
                         Edit
                       </Link>
-                      <Link
-                        href={`/live/${client.slug}`}
-                        className="text-indigo-600 hover:text-indigo-800 font-medium"
-                      >
+                      <Link href={`/live/${client.slug}`} className="text-indigo-600 hover:text-indigo-800 font-medium">
                         Dashboard
                       </Link>
                     </td>
@@ -76,7 +148,7 @@ export default async function AdminDashboardPage() {
                 ))}
                 {!clients?.length && (
                   <tr>
-                    <td colSpan={4} className="px-6 py-8 text-center text-gray-500">
+                    <td colSpan={4} className="px-6 py-8 text-center text-gray-400">
                       No clients yet. Create your first client.
                     </td>
                   </tr>
@@ -85,7 +157,40 @@ export default async function AdminDashboardPage() {
             </table>
           </div>
         </div>
-      </div>
+
+        {/* Footer */}
+        <footer className="mt-6 text-center text-xs text-gray-400 border-t border-gray-200 pt-4">
+          &copy; {new Date().getFullYear()} Alpha AI – All rights reserved.
+        </footer>
+      </main>
+
+      {/* Client-side filter logic */}
+      <script dangerouslySetInnerHTML={{
+        __html: `
+          (function() {
+            const searchInput = document.getElementById('searchInput');
+            const statusFilter = document.getElementById('statusFilter');
+            const table = document.getElementById('clientsTable');
+            const rows = table.querySelectorAll('tbody tr');
+
+            function filterTable() {
+              const search = searchInput.value.toLowerCase().trim();
+              const status = statusFilter.value;
+              rows.forEach(row => {
+                const rowStatus = row.dataset.status || '';
+                const name = row.dataset.name || '';
+                let show = true;
+                if (search && !name.includes(search)) show = false;
+                if (status !== 'all' && rowStatus !== status) show = false;
+                row.style.display = show ? '' : 'none';
+              });
+            }
+
+            searchInput.addEventListener('input', filterTable);
+            statusFilter.addEventListener('change', filterTable);
+          })();
+        `
+      }} />
     </div>
   );
 }
