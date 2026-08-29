@@ -33,64 +33,81 @@ export default async function ClientDashboardPage({ params }: { params: { slug: 
   const bookings = weekCalls.filter((c: any) => c.status === 'Booked').length;
 
   return (
-    <div className="p-8 max-w-5xl mx-auto">
-      <h1 className="text-3xl font-bold mb-2">Welcome, {client.business_name}</h1>
-      <p className="text-gray-600 mb-8">Your AI receptionist dashboard</p>
-
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-        <div className="bg-white shadow p-4 rounded">
-          <div className="text-sm text-gray-500">Total Calls (this week)</div>
-          <div className="text-2xl font-bold">{totalCalls}</div>
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 p-6 md:p-8">
+      <div className="max-w-5xl mx-auto">
+        <div className="bg-white rounded-2xl shadow-lg p-6 mb-8 border border-gray-100">
+          <h1 className="text-3xl font-bold text-gray-800">Welcome, {client.business_name}</h1>
+          <p className="text-gray-500">Your AI receptionist dashboard</p>
         </div>
-        <div className="bg-white shadow p-4 rounded">
-          <div className="text-sm text-gray-500">Bookings</div>
-          <div className="text-2xl font-bold">{bookings}</div>
+
+        {/* NFC Notification Banner */}
+        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-4 mb-8 text-center text-sm text-blue-700 shadow-sm">
+          📦 <strong>NFC card</strong> will be delivered to your provided address: <span className="font-mono bg-white px-2 py-0.5 rounded border border-blue-200">{client.delivery_address || 'Not provided'}</span>
         </div>
-        <div className="bg-white shadow p-4 rounded">
-          <div className="text-sm text-gray-500">Review Replies</div>
-          <div className="text-2xl font-bold">0</div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+          <div className="bg-white shadow-md rounded-xl p-5 border border-gray-100 hover:shadow-lg transition-shadow">
+            <div className="text-sm text-gray-500">Total Calls (this week)</div>
+            <div className="text-3xl font-bold text-gray-800">{totalCalls}</div>
+          </div>
+          <div className="bg-white shadow-md rounded-xl p-5 border border-gray-100 hover:shadow-lg transition-shadow">
+            <div className="text-sm text-gray-500">Bookings</div>
+            <div className="text-3xl font-bold text-gray-800">{bookings}</div>
+          </div>
+          <div className="bg-white shadow-md rounded-xl p-5 border border-gray-100 hover:shadow-lg transition-shadow">
+            <div className="text-sm text-gray-500">Review Replies</div>
+            <div className="text-3xl font-bold text-gray-800">0</div>
+          </div>
         </div>
-      </div>
 
-      <QRDisplay client={client} />
+        <div className="mb-8">
+          <QRDisplay client={client} />
+        </div>
 
-      <div className="mt-8">
-        <WebhookUrlDisplay webhookUrl={client.webhook_url} />
-      </div>
+        <div className="mb-8">
+          <WebhookUrlDisplay webhookUrl={client.webhook_url} />
+        </div>
 
-      <div className="mt-8">
-        <h2 className="text-xl font-semibold mb-4">Recent Calls</h2>
-        <div className="bg-white shadow overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="p-2 text-left">Time</th>
-                <th className="p-2 text-left">Type</th>
-                <th className="p-2 text-left">Customer</th>
-                <th className="p-2 text-left">Summary</th>
-                <th className="p-2 text-left">Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {calls.length === 0 ? (
+        <div className="bg-white shadow-md rounded-xl p-6 border border-gray-100">
+          <h2 className="text-xl font-semibold mb-4 text-gray-800">Recent Calls</h2>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-gray-50 border-b">
                 <tr>
-                  <td colSpan={5} className="p-4 text-center text-gray-500">
-                    No calls yet.
-                  </td>
+                  <th className="px-4 py-3 text-left text-gray-500 font-medium">Time</th>
+                  <th className="px-4 py-3 text-left text-gray-500 font-medium">Type</th>
+                  <th className="px-4 py-3 text-left text-gray-500 font-medium">Customer</th>
+                  <th className="px-4 py-3 text-left text-gray-500 font-medium">Summary</th>
+                  <th className="px-4 py-3 text-left text-gray-500 font-medium">Status</th>
                 </tr>
-              ) : (
-                calls.map((call: any, idx: number) => (
-                  <tr key={idx} className="border-t">
-                    <td className="p-2">{new Date(call.timestamp).toLocaleString()}</td>
-                    <td className="p-2">{call.call_type}</td>
-                    <td className="p-2">{call.customer_name} ({call.customer_phone})</td>
-                    <td className="p-2">{call.summary}</td>
-                    <td className="p-2">{call.status}</td>
+              </thead>
+              <tbody>
+                {calls.length === 0 ? (
+                  <tr>
+                    <td colSpan={5} className="px-4 py-6 text-center text-gray-400">No calls yet.</td>
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+                ) : (
+                  calls.map((call: any, idx: number) => (
+                    <tr key={idx} className="border-t hover:bg-gray-50 transition-colors">
+                      <td className="px-4 py-3">{new Date(call.timestamp).toLocaleString()}</td>
+                      <td className="px-4 py-3">{call.call_type}</td>
+                      <td className="px-4 py-3">{call.customer_name} ({call.customer_phone})</td>
+                      <td className="px-4 py-3">{call.summary}</td>
+                      <td className="px-4 py-3">
+                        <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${
+                          call.status === 'Booked' ? 'bg-green-100 text-green-700' :
+                          call.status === 'Rate Limited' ? 'bg-red-100 text-red-700' :
+                          'bg-gray-100 text-gray-600'
+                        }`}>
+                          {call.status}
+                        </span>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
     </div>
