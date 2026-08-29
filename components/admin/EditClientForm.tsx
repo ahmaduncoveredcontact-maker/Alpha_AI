@@ -1,8 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { QRCode } from 'qrcode.react';
+import QRCode from 'qrcode';
 import QRDisplay from '@/components/client/QRDisplay';
 import WebhookUrlDisplay from '@/components/client/WebhookUrlDisplay';
 
@@ -33,6 +33,14 @@ export default function EditClientForm({ client }: { client: Client }) {
   const [loading, setLoading] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [generatingQR, setGeneratingQR] = useState(false);
+  const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    const url = form.google_review_link || `${process.env.NEXT_PUBLIC_BASE_URL}/r/${form.slug}`;
+    QRCode.toDataURL(url, { width: 200, margin: 2 })
+      .then((dataUrl) => setQrDataUrl(dataUrl))
+      .catch(() => setQrDataUrl(null));
+  }, [form.google_review_link, form.slug]);
 
   const handleToggle = (key: keyof Client) => {
     setForm({ ...form, [key]: !form[key] });
@@ -270,14 +278,14 @@ export default function EditClientForm({ client }: { client: Client }) {
           <h3 className="text-lg font-semibold text-gray-900 mb-4">📱 Live QR Preview</h3>
           <div className="flex flex-col items-center border rounded-lg p-4 bg-gray-50">
             <div className="bg-white p-4 rounded-xl shadow-inner">
-              <QRCode
-                value={form.google_review_link || redirectUrl}
-                size={200}
-                level="M"
-                includeMargin
-                fgColor="#000000"
-                bgColor="#ffffff"
-              />
+              {qrDataUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={qrDataUrl} alt="QR Code Preview" className="w-48 h-48" />
+              ) : (
+                <div className="w-48 h-48 bg-gray-200 flex items-center justify-center text-gray-500">
+                  Generating...
+                </div>
+              )}
             </div>
             <p className="text-xs text-gray-400 mt-3 break-all text-center">
               {form.google_review_link ? 'Links to: ' + form.google_review_link : 'Enter a Google Review Link above'}
