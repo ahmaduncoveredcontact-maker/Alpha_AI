@@ -1,6 +1,6 @@
 import { google } from 'googleapis';
 
-// Reuse the same JWT auth from sheets, but add My Business scopes
+// Reuse JWT auth from sheets
 const auth = new google.auth.JWT({
   email: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
   key: process.env.GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY?.replace(/\\n/g, '\n'),
@@ -10,29 +10,51 @@ const auth = new google.auth.JWT({
   ],
 });
 
-const myBusiness = google.mybusinessbusinessinformation({ version: 'v1', auth });
-const myBusinessAccount = google.mybusinessaccountmanagement({ version: 'v1', auth });
+// Helper to get access token
+const getToken = async () => {
+  await auth.authorize();
+  return auth.credentials.access_token;
+};
 
 export const gbp = {
-  // List all accounts accessible by the service account
+  // List all accounts (v1 Account Management API)
   listAccounts: async () => {
-    const res = await myBusinessAccount.accounts.list();
-    return res.data.accounts || [];
-  },
-
-  // List locations for a given account ID
-  listLocations: async (accountId: string) => {
-    const res = await myBusiness.locations.list({
-      parent: `accounts/${accountId}`,
-      pageSize: 100,
+    const token = await getToken();
+    const url = 'https://mybusinessaccountmanagement.googleapis.com/v1/accounts';
+    const res = await fetch(url, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+      },
     });
-    return res.data.locations || [];
+    if (!res.ok) {
+      const err = await res.text();
+      throw new Error(`Failed to list accounts: ${err}`);
+    }
+    const data = await res.json();
+    return data.accounts || [];
   },
 
-  // Fetch new reviews since lastChecked for a location
+  // List locations for a given account (v1 Business Information API)
+  listLocations: async (accountId: string) => {
+    const token = await getToken();
+    const url = `https://mybusinessbusinessinformation.googleapis.com/v1/accounts/${accountId}/locations?pageSize=100`;
+    const res = await fetch(url, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+      },
+    });
+    if (!res.ok) {
+      const err = await res.text();
+      throw new Error(`Failed to list locations: ${err}`);
+    }
+    const data = await res.json();
+    return data.locations || [];
+  },
+
+  // Fetch new reviews (v4 legacy API – still needed for reviews)
   getNewReviews: async (accountId: string, locationId: string, lastChecked: string) => {
+    const token = await getToken();
     const url = `https://mybusiness.googleapis.com/v4/accounts/${accountId}/locations/${locationId}/reviews`;
-    const token = await auth.getAccessToken();
     const res = await fetch(url, {
       headers: {
         'Authorization': `Bearer ${token}`,
@@ -44,6 +66,7 @@ export const gbp = {
     }
     const data = await res.json();
     const reviews = data.reviews || [];
+    // Filter reviews after lastChecked, 5-star, no reply
     return reviews.filter((r: any) => {
       const reviewDate = new Date(r.createTime);
       const after = new Date(lastChecked);
@@ -51,10 +74,10 @@ export const gbp = {
     });
   },
 
-  // Post a reply to a review
+  // Post a reply to a review (v4 legacy API)
   postReply: async (accountId: string, locationId: string, reviewId: string, reply: string) => {
+    const token = await getToken();
     const url = `https://mybusiness.googleapis.com/v4/accounts/${accountId}/locations/${locationId}/reviews/${reviewId}/reply`;
-    const token = await auth.getAccessToken();
     const res = await fetch(url, {
       method: 'POST',
       headers: {
