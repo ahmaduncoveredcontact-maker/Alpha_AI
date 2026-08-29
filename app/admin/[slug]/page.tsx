@@ -15,9 +15,14 @@ export default async function EditClientPage({ params }: { params: { slug: strin
   }
 
   return (
-    <div className="max-w-2xl mx-auto p-8">
-      <h1 className="text-2xl font-bold mb-6">Edit {client.business_name}</h1>
-      <EditClientForm client={client} />
+    <div className="min-h-screen bg-gray-50 p-6 md:p-8">
+      <div className="max-w-7xl mx-auto">
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-gray-900">Edit {client.business_name}</h1>
+          <p className="text-gray-600 mt-1">Manage settings and preview the client dashboard.</p>
+        </div>
+        <EditClientForm client={client} />
+      </div>
     </div>
   );
 }
