@@ -24,7 +24,10 @@ export async function POST(req: NextRequest) {
   }
 
   const account = accounts[0];
-  const accountId = account.name.split('/').pop();
+  const accountId = account.name?.split('/').pop() || account.accountId || '';
+  if (!accountId) {
+    return NextResponse.json({ error: 'Could not extract account ID' }, { status: 500 });
+  }
 
   const locations = await gbp.listLocations(accountId);
   if (!locations.length) {
@@ -32,7 +35,10 @@ export async function POST(req: NextRequest) {
   }
 
   const location = locations[0];
-  const locationId = location.name.split('/').pop();
+  const locationId = location.name?.split('/').pop() || location.locationId || '';
+  if (!locationId) {
+    return NextResponse.json({ error: 'Could not extract location ID' }, { status: 500 });
+  }
 
   await supabaseAdmin
     .from('clients')
@@ -45,7 +51,7 @@ export async function POST(req: NextRequest) {
   return NextResponse.json({
     accountId,
     locationId,
-    accountName: account.accountName || account.name,
-    locationName: location.title || location.name,
+    accountName: account.accountName || account.name || '',
+    locationName: location.title || location.name || '',
   });
 }
