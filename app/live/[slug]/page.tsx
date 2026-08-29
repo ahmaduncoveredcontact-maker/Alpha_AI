@@ -17,7 +17,7 @@ export default async function ClientDashboardPage({ params }: { params: { slug: 
   }
 
   const { getRows } = await import('@/lib/sheets');
-  let calls = [];
+  let calls: any[] = [];
   try {
     calls = await getRows(client.slug);
   } catch (err) {
