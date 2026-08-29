@@ -1,0 +1,31 @@
+export interface Client {
+  id: string;
+  business_name: string;
+  slug: string;
+  phone?: string;
+  email?: string;
+  hours?: string;
+  services?: string;
+  price_ranges?: string;
+  service_area?: string;
+  calendar_link?: string;
+  website_contact_form_url?: string;
+  review_business_name?: string;
+  google_review_link?: string;
+  delivery_address?: string;
+  access_code_hash: string;
+  voice_instructions: string;
+  vapi_assistant_id?: string;
+  qr_main_url?: string;
+  qr_wallpaper_url?: string;
+  qr_sticker_url?: string;
+  webhook_secret: string;
+  webhook_url: string;
+  outbound_calling_enabled: boolean;
+  consent_confirmed: boolean;
+  manager_access_granted: boolean;
+  gbp_account_id?: string;
+  gbp_location_id?: string;
+  created_at: string;
+  updated_at: string;
+}
