@@ -6,7 +6,6 @@ export function middleware(request: NextRequest) {
 
   // Admin routes protection (except login page and auth API)
   if (path.startsWith('/admin') || path.startsWith('/api/admin')) {
-    // Skip auth API and login page itself
     if (path === '/admin-login' || path === '/api/admin/auth') {
       return NextResponse.next();
     }
@@ -17,11 +16,28 @@ export function middleware(request: NextRequest) {
     }
   }
 
-  // Client live page protection: check client session for /live/[slug] (not login)
+  // Client live page protection
   if (path.startsWith('/live/') && !path.includes('/login')) {
     const clientSession = request.cookies.get('client_session');
+    const adminSession = request.cookies.get('admin_session');
+    const slug = path.split('/')[2];
+
     if (!clientSession) {
-      const slug = path.split('/')[2];
+      // If admin is logged in, auto-login the client
+      if (adminSession && adminSession.value === 'authenticated' && slug) {
+        // Set client session and allow access
+        const response = NextResponse.next();
+        response.cookies.set('client_session', slug, {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === 'production',
+          maxAge: 60 * 60 * 24 * 7,
+          path: '/',
+          sameSite: 'lax',
+        });
+        return response;
+      }
+
+      // No admin session – redirect to client login
       if (slug) {
         const loginUrl = new URL(`/live/${slug}/login`, request.url);
         return NextResponse.redirect(loginUrl);
