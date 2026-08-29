@@ -34,7 +34,7 @@ export default async function AdminDashboardPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-5 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
           <div className="flex items-center space-x-3">
             <div className="bg-white/10 rounded-lg px-3 py-1.5">
-              <span className="text-xl font-bold tracking-tight">α</span>
+              <span className="text-xl font-bold tracking-tight">Î±</span>
             </div>
             <div>
               <h1 className="text-2xl font-bold tracking-tight">Alpha AI</h1>
@@ -145,7 +145,7 @@ export default async function AdminDashboardPage() {
                         Edit
                       </Link>
                       <Link
-                        href={`/live/${client.slug}`}
+                        href={`/live/${client.slug}?auto=1`}
                         className="inline-flex items-center gap-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
                       >
                         <ExternalLink className="w-3.5 h-3.5" />
@@ -168,7 +168,7 @@ export default async function AdminDashboardPage() {
 
         {/* Footer */}
         <footer className="mt-6 text-center text-xs text-gray-400 border-t border-gray-200 pt-4">
-          &copy; {new Date().getFullYear()} Alpha AI – All rights reserved.
+          &copy; {new Date().getFullYear()} Alpha AI â€“ All rights reserved.
         </footer>
       </main>
 
