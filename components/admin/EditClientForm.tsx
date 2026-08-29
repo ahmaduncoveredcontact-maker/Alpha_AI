@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import QRCode from 'qrcode.react';
+import { QRCode } from 'qrcode.react';
 import QRDisplay from '@/components/client/QRDisplay';
 import WebhookUrlDisplay from '@/components/client/WebhookUrlDisplay';
 
