@@ -8,6 +8,26 @@ export async function POST(
   { params }: { params: { slug: string } }
 ) {
   try {
+    // Ensure bucket exists
+    const bucketName = 'qrcodes';
+    const { data: buckets, error: listError } = await supabaseAdmin.storage.listBuckets();
+    if (listError) {
+      console.error('List buckets error:', listError);
+      return NextResponse.json({ error: 'Failed to list buckets' }, { status: 500 });
+    }
+    const bucketExists = buckets.some((b: any) => b.name === bucketName);
+    if (!bucketExists) {
+      const { error: createError } = await supabaseAdmin.storage.createBucket(bucketName, {
+        public: true,
+        allowedMimeTypes: ['image/png'],
+      });
+      if (createError) {
+        console.error('Create bucket error:', createError);
+        return NextResponse.json({ error: `Failed to create bucket: ${createError.message}` }, { status: 500 });
+      }
+      console.log('✅ Created bucket: qrcodes');
+    }
+
     const { data: client, error } = await supabaseAdmin
       .from('clients')
       .select('*')
@@ -33,6 +53,7 @@ export async function POST(
 
     return NextResponse.json({ success: true, qrUrls });
   } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    console.error('QR regeneration error:', error);
+    return NextResponse.json({ error: error.message || 'Unknown error' }, { status: 500 });
   }
 }
