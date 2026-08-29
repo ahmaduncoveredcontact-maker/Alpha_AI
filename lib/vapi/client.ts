@@ -65,4 +65,4 @@ export const vapi = {
   },
 };
 
-// Verify Vapi webhook signature (stub – will be replaced)
+// Verify Vapi webhook signature (stub ï¿½ will be replaced)

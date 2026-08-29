@@ -31,7 +31,7 @@ export const createTab = async (slug: string) => {
     });
   } catch (error: any) {
     if (error.message?.includes('already exists')) {
-      // Sheet already exists – fine
+      // Sheet already exists ï¿½ fine
       return;
     }
     throw error;

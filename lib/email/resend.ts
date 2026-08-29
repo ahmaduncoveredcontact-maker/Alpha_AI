@@ -8,7 +8,7 @@ export const email = {
     await resend.emails.send({
       from: FROM_EMAIL,
       to,
-      subject: `Welcome to Alpha AI – ${businessName}`,
+      subject: `Welcome to Alpha AI ï¿½ ${businessName}`,
       html: `
         <h1>Welcome!</h1>
         <p>Your Alpha AI account for <strong>${businessName}</strong> has been created.</p>
@@ -21,7 +21,7 @@ export const email = {
     await resend.emails.send({
       from: FROM_EMAIL,
       to,
-      subject: `New Call Summary – ${businessName}`,
+      subject: `New Call Summary ï¿½ ${businessName}`,
       html: `
         <h2>New Call Received</h2>
         <p><strong>Customer:</strong> ${callData.customer_name}</p>
