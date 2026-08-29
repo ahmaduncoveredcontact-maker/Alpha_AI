@@ -24,15 +24,11 @@ export const vapi = {
       },
       endCallMessage: 'Thank you for calling. Goodbye.',
     };
+    // If a calendar link is provided, include it in the instructions
     if (config.calendarLink) {
-      body.tools = [{
-        type: 'make',
-        name: 'book_appointment',
-        description: 'Book an appointment using the calendar link',
-        url: config.calendarLink,
-        method: 'GET',
-      }];
+      body.model.messages[0].content += `\n\nThe booking link is: ${config.calendarLink}. You can tell the customer to visit this link to book.`;
     }
+
     const res = await fetch(`${VAPI_BASE}/assistant`, {
       method: 'POST',
       headers,
@@ -50,7 +46,6 @@ export const vapi = {
     const body = {
       phoneNumber,
       assistantId,
-      // Optional: you can set other parameters
     };
     const res = await fetch(`${VAPI_BASE}/call`, {
       method: 'POST',
@@ -64,5 +59,3 @@ export const vapi = {
     return await res.json();
   },
 };
-
-// Verify Vapi webhook signature (stub � will be replaced)
