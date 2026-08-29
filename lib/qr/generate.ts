@@ -1,19 +1,21 @@
 import QRCode from 'qrcode';
 
-export async function generateQRImages(url: string) {
-  const opts = {
+export async function generateQRImages(url: string): Promise<{ main: Buffer; wallpaper: Buffer; sticker: Buffer }> {
+  const opts: QRCode.QRCodeToBufferOptions = {
     errorCorrectionLevel: 'M',
     margin: 2,
-    width: 500,
     color: { dark: '#000000', light: '#ffffff' },
   };
 
-  // Main 500px
-  const mainBuffer = await QRCode.toBuffer(url, { ...opts, width: 500 });
-  // Wallpaper 1200px
-  const wallpaperBuffer = await QRCode.toBuffer(url, { ...opts, width: 1200 });
-  // Sticker 300px
-  const stickerBuffer = await QRCode.toBuffer(url, { ...opts, width: 300 });
+  const [main, wallpaper, sticker] = await Promise.all([
+    QRCode.toBuffer(url, { ...opts, width: 500 }),
+    QRCode.toBuffer(url, { ...opts, width: 1200 }),
+    QRCode.toBuffer(url, { ...opts, width: 300 }),
+  ]);
 
-  return { main: mainBuffer, wallpaper: wallpaperBuffer, sticker: stickerBuffer };
+  return {
+    main: main as Buffer,
+    wallpaper: wallpaper as Buffer,
+    sticker: sticker as Buffer,
+  };
 }
