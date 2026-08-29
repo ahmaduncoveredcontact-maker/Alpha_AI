@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import QRCode from 'qrcode.react';
 import QRDisplay from '@/components/client/QRDisplay';
 import WebhookUrlDisplay from '@/components/client/WebhookUrlDisplay';
 
@@ -94,7 +95,6 @@ export default function EditClientForm({ client }: { client: Client }) {
     if (res.ok) {
       const data = await res.json();
       alert('QR codes regenerated successfully!');
-      // Update form with new QR URLs
       setForm({
         ...form,
         qr_main_url: data.qrUrls.main,
@@ -108,9 +108,10 @@ export default function EditClientForm({ client }: { client: Client }) {
     }
   };
 
+  const redirectUrl = `${process.env.NEXT_PUBLIC_BASE_URL}/r/${form.slug}`;
+
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-      {/* Left: Full Edit Form */}
       <div className="bg-white rounded-xl shadow-lg p-6">
         <form onSubmit={handleSubmit} className="space-y-5">
           <div>
@@ -264,12 +265,29 @@ export default function EditClientForm({ client }: { client: Client }) {
         </form>
       </div>
 
-      {/* Right: Live Preview */}
       <div className="space-y-6">
         <div className="bg-white rounded-xl shadow-lg p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">?? Client Dashboard Preview</h3>
-          <div className="border rounded-lg p-4 bg-gray-50">
-            <QRDisplay client={form} />
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">📱 Live QR Preview</h3>
+          <div className="flex flex-col items-center border rounded-lg p-4 bg-gray-50">
+            <div className="bg-white p-4 rounded-xl shadow-inner">
+              <QRCode
+                value={form.google_review_link || redirectUrl}
+                size={200}
+                level="M"
+                includeMargin
+                fgColor="#000000"
+                bgColor="#ffffff"
+              />
+            </div>
+            <p className="text-xs text-gray-400 mt-3 break-all text-center">
+              {form.google_review_link ? 'Links to: ' + form.google_review_link : 'Enter a Google Review Link above'}
+            </p>
+          </div>
+          <div className="mt-4">
+            <p className="text-sm text-gray-600"><strong>Saved QR for dashboard:</strong></p>
+            <div className="border rounded-lg p-3 mt-2 bg-gray-50">
+              <QRDisplay client={form} />
+            </div>
           </div>
         </div>
         <div className="bg-white rounded-xl shadow-lg p-6">
@@ -283,7 +301,7 @@ export default function EditClientForm({ client }: { client: Client }) {
             rel="noopener noreferrer"
             className="inline-block text-indigo-600 hover:text-indigo-800 font-medium"
           >
-            Open Client Dashboard ?
+            Open Client Dashboard →
           </a>
         </div>
       </div>
