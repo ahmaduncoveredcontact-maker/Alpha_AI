@@ -24,7 +24,8 @@ export async function POST(req: NextRequest) {
   }
 
   const account = accounts[0];
-  const accountId = account.name?.split('/').pop() || account.accountId || '';
+  // Strictly rely on the resource 'name' property (e.g., 'accounts/123456789')
+  const accountId = account.name?.split('/').pop() || '';
   if (!accountId) {
     return NextResponse.json({ error: 'Could not extract account ID' }, { status: 500 });
   }
@@ -35,7 +36,7 @@ export async function POST(req: NextRequest) {
   }
 
   const location = locations[0];
-  const locationId = location.name?.split('/').pop() || location.locationId || '';
+  const locationId = location.name?.split('/').pop() || '';
   if (!locationId) {
     return NextResponse.json({ error: 'Could not extract location ID' }, { status: 500 });
   }
@@ -51,7 +52,8 @@ export async function POST(req: NextRequest) {
   return NextResponse.json({
     accountId,
     locationId,
-    accountName: account.accountName || account.name || '',
-    locationName: location.title || location.name || '',
+    // Cast to any to bypass strict Google API type limitations for descriptive fields
+    accountName: (account as any).accountName || account.name || '',
+    locationName: (location as any).title || location.name || '',
   });
 }
