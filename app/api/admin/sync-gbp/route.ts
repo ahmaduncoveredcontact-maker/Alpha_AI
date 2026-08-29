@@ -24,7 +24,7 @@ export async function POST(req: NextRequest) {
   }
 
   const account = accounts[0];
-  const accountId = account.name?.split('/').pop() || account.accountId || '';
+  const accountId = account.name?.split('/').pop();
   if (!accountId) {
     return NextResponse.json({ error: 'Could not extract account ID' }, { status: 500 });
   }
@@ -35,7 +35,7 @@ export async function POST(req: NextRequest) {
   }
 
   const location = locations[0];
-  const locationId = location.name?.split('/').pop() || location.locationId || '';
+  const locationId = location.name?.split('/').pop();
   if (!locationId) {
     return NextResponse.json({ error: 'Could not extract location ID' }, { status: 500 });
   }
