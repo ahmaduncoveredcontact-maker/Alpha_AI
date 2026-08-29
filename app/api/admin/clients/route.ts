@@ -8,6 +8,27 @@ import { createTab } from '@/lib/sheets';
 import { email } from '@/lib/email/resend';
 import bcrypt from 'bcryptjs';
 
+// Helper to generate a unique slug
+async function getUniqueSlug(baseSlug: string): Promise<string> {
+  let slug = baseSlug;
+  let counter = 1;
+  let exists = true;
+  while (exists) {
+    const { data, error } = await supabaseAdmin
+      .from('clients')
+      .select('slug')
+      .eq('slug', slug)
+      .single();
+    if (error || !data) {
+      exists = false;
+    } else {
+      slug = `${baseSlug}-${counter}`;
+      counter++;
+    }
+  }
+  return slug;
+}
+
 export async function GET() {
   try {
     const { data, error } = await supabaseAdmin.from('clients').select('*').order('created_at', { ascending: false });
@@ -29,7 +50,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
-    const slug = generateSlug(body.business_name);
+    const baseSlug = generateSlug(body.business_name);
+    const slug = await getUniqueSlug(baseSlug);
     const accessCode = body.access_code || generateAccessCode();
     const accessCodeHash = await bcrypt.hash(accessCode, 10);
     const webhookSecret = generateWebhookSecret();
@@ -90,7 +112,6 @@ export async function POST(req: NextRequest) {
       qrUrls = await uploadQRImages(slug, qrBuffers);
     } catch (error: any) {
       console.error('QR generation error:', error);
-      // Continue without QR (we can generate later)
       qrUrls = { main: '', wallpaper: '', sticker: '' };
     }
 
@@ -109,7 +130,6 @@ export async function POST(req: NextRequest) {
       await createTab(slug);
     } catch (error: any) {
       console.error('Sheet creation error:', error);
-      // Continue – sheet may already exist or we can create later
     }
 
     // 5. Send welcome email
@@ -118,7 +138,6 @@ export async function POST(req: NextRequest) {
         await email.sendWelcome(client.email, client.business_name, accessCode);
       } catch (error: any) {
         console.error('Email sending error:', error);
-        // Continue – email is not critical
       }
     }
 
