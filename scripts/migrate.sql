@@ -36,3 +36,7 @@ CREATE TABLE IF NOT EXISTS clients (
 CREATE INDEX IF NOT EXISTS idx_clients_slug ON clients(slug);
 CREATE INDEX IF NOT EXISTS idx_clients_vapi_assistant_id ON clients(vapi_assistant_id);
 CREATE INDEX IF NOT EXISTS idx_clients_webhook_secret ON clients(webhook_secret);
+
+ALTER TABLE clients ADD COLUMN IF NOT EXISTS qr_title TEXT DEFAULT 'Review us on Google';
+ALTER TABLE clients ADD COLUMN IF NOT EXISTS qr_subtitle TEXT DEFAULT 'Your feedback helps us improve and grow.';
+ALTER TABLE clients ADD COLUMN IF NOT EXISTS qr_tagline TEXT DEFAULT 'Good days start with coffee ??';

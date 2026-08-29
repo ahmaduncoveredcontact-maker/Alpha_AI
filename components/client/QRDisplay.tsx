@@ -7,19 +7,19 @@ interface Client {
   qr_sticker_url?: string;
   google_review_link?: string;
   slug: string;
+  qr_title?: string;
+  qr_subtitle?: string;
+  qr_tagline?: string;
 }
 
 export default function QRDisplay({ client }: { client: Client }) {
   return (
     <div className="flex flex-col items-center">
-      {/* QR Card – professional, centered */}
       <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-sm w-full border border-gray-100 transition-all hover:shadow-3xl hover:scale-[1.02] duration-300">
-        {/* Business name */}
         <div className="text-center mb-4">
           <h3 className="text-2xl font-bold text-gray-800 tracking-tight">{client.business_name}</h3>
         </div>
 
-        {/* QR Code */}
         <div className="flex justify-center mb-6">
           {client.qr_main_url ? (
             // eslint-disable-next-line @next/next/no-img-element
@@ -35,7 +35,6 @@ export default function QRDisplay({ client }: { client: Client }) {
           )}
         </div>
 
-        {/* Google Branding */}
         <div className="text-center space-y-1">
           <div className="flex justify-center items-center space-x-2">
             <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -49,13 +48,12 @@ export default function QRDisplay({ client }: { client: Client }) {
           <div className="flex justify-center space-x-0.5 text-2xl text-yellow-500">
             <span>&#9733;</span><span>&#9733;</span><span>&#9733;</span><span>&#9733;</span><span>&#9733;</span>
           </div>
-          <p className="text-sm text-gray-600 font-medium mt-1">Review us on Google</p>
-          <p className="text-xs text-gray-400">Your feedback helps us improve and grow.</p>
-          <p className="text-xs text-gray-400 italic mt-1">Good days start with coffee ❤️</p>
+          <p className="text-sm text-gray-600 font-medium mt-1">{client.qr_title || 'Review us on Google'}</p>
+          <p className="text-xs text-gray-400">{client.qr_subtitle || 'Your feedback helps us improve and grow.'}</p>
+          <p className="text-xs text-gray-400 italic mt-1">{client.qr_tagline || 'Good days start with coffee ❤️'}</p>
         </div>
       </div>
 
-      {/* Download Buttons – separate section */}
       <div className="mt-6 flex flex-wrap justify-center gap-3">
         {client.qr_main_url && (
           <a
@@ -86,7 +84,6 @@ export default function QRDisplay({ client }: { client: Client }) {
         )}
       </div>
 
-      {/* Optional: Direct review link */}
       {client.google_review_link && (
         <div className="mt-4 text-xs text-gray-400 truncate max-w-xs">
           <span className="font-medium">Review link:</span> {client.google_review_link}

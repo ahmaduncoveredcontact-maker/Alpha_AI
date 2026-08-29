@@ -12,6 +12,9 @@ export interface Client {
   website_contact_form_url?: string;
   review_business_name?: string;
   google_review_link?: string;
+  qr_title?: string;
+  qr_subtitle?: string;
+  qr_tagline?: string;
   delivery_address?: string;
   access_code_hash: string;
   voice_instructions: string;

@@ -19,6 +19,7 @@ export async function PUT(
   { params }: { params: { slug: string } }
 ) {
   const body = await req.json();
+  // Allow all fields from the form (including qr_title, qr_subtitle, qr_tagline)
   const { data, error } = await supabaseAdmin
     .from('clients')
     .update(body)
