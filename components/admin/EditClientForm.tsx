@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import QRDisplay from '@/components/client/QRDisplay';
 import WebhookUrlDisplay from '@/components/client/WebhookUrlDisplay';
 
 interface Client {
@@ -22,6 +23,9 @@ interface Client {
   manager_access_granted: boolean;
   gbp_account_id?: string;
   gbp_location_id?: string;
+  qr_main_url?: string;
+  qr_wallpaper_url?: string;
+  qr_sticker_url?: string;
   webhook_url: string;
 }
 
@@ -84,6 +88,7 @@ export default function EditClientForm({ client }: { client: Client }) {
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <!-- Main form – 2/3 width -->
       <div className="lg:col-span-2">
         <div className="bg-white rounded-xl shadow-lg p-6">
           <form onSubmit={handleSubmit} className="space-y-5">
@@ -261,10 +266,23 @@ export default function EditClientForm({ client }: { client: Client }) {
         </div>
       </div>
 
+      <!-- Sidebar – 1/3 width -->
       <div className="lg:col-span-1 space-y-6">
+        <!-- QR Card Preview -->
+        <div className="bg-white rounded-xl shadow-lg p-6">
+          <h4 className="font-medium text-gray-700 mb-4 text-center">📱 QR Card Preview</h4>
+          <div className="border rounded-lg p-4 bg-gray-50">
+            <QRDisplay client={form} />
+          </div>
+          <p className="text-xs text-gray-400 mt-3 text-center">
+            This preview updates live as you edit the fields.
+          </p>
+        </div>
+
         <div className="bg-white rounded-xl shadow-lg p-6">
           <WebhookUrlDisplay webhookUrl={form.webhook_url} />
         </div>
+
         <div className="bg-white rounded-xl shadow-lg p-6">
           <h4 className="font-medium text-gray-700 mb-2">Quick Links</h4>
           <a
