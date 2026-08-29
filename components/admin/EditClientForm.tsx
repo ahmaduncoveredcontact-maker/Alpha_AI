@@ -88,7 +88,7 @@ export default function EditClientForm({ client }: { client: Client }) {
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-      <!-- Main form – 2/3 width -->
+      {/* Main form â€“ 2/3 width */}
       <div className="lg:col-span-2">
         <div className="bg-white rounded-xl shadow-lg p-6">
           <form onSubmit={handleSubmit} className="space-y-5">
@@ -143,7 +143,7 @@ export default function EditClientForm({ client }: { client: Client }) {
                 className="mt-1 w-full border border-gray-300 rounded-lg px-4 py-2"
               />
               <p className="text-xs text-gray-400 mt-1">
-                This link is used by the QR code – update it anytime.
+                This link is used by the QR code â€“ update it anytime.
               </p>
             </div>
             <div>
@@ -156,7 +156,7 @@ export default function EditClientForm({ client }: { client: Client }) {
             </div>
 
             <hr className="border-gray-200" />
-            <h3 className="font-medium text-gray-900">QR Card Text – Fully Editable</h3>
+            <h3 className="font-medium text-gray-900">QR Card Text â€“ Fully Editable</h3>
             <div>
               <label className="block text-sm font-medium text-gray-700">Title (above stars)</label>
               <input
@@ -176,7 +176,7 @@ export default function EditClientForm({ client }: { client: Client }) {
             <div>
               <label className="block text-sm font-medium text-gray-700">Tagline (bottom)</label>
               <input
-                value={form.qr_tagline || 'Good days start with coffee ❤️'}
+                value={form.qr_tagline || 'Good days start with coffee â¤ï¸'}
                 onChange={(e) => setForm({ ...form, qr_tagline: e.target.value })}
                 className="mt-1 w-full border border-gray-300 rounded-lg px-4 py-2"
               />
@@ -266,11 +266,11 @@ export default function EditClientForm({ client }: { client: Client }) {
         </div>
       </div>
 
-      <!-- Sidebar – 1/3 width -->
+      {/* Sidebar â€“ 1/3 width */}
       <div className="lg:col-span-1 space-y-6">
-        <!-- QR Card Preview -->
+        {/* QR Card Preview */}
         <div className="bg-white rounded-xl shadow-lg p-6">
-          <h4 className="font-medium text-gray-700 mb-4 text-center">📱 QR Card Preview</h4>
+          <h4 className="font-medium text-gray-700 mb-4 text-center">ðŸ“± QR Card Preview</h4>
           <div className="border rounded-lg p-4 bg-gray-50">
             <QRDisplay client={form} />
           </div>
@@ -291,7 +291,7 @@ export default function EditClientForm({ client }: { client: Client }) {
             rel="noopener noreferrer"
             className="inline-block text-indigo-600 hover:text-indigo-800 font-medium"
           >
-            Open Client Dashboard →
+            Open Client Dashboard â†’
           </a>
         </div>
       </div>
