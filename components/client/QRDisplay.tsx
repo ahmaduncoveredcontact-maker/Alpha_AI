@@ -43,7 +43,7 @@ export default function QRDisplay({ client }: { client: Client }) {
         logging: false,
         allowTaint: false,
         width: 400,
-        height: 540, // slightly taller to ensure spacing
+        height: 560, // increased height
       });
       const link = document.createElement('a');
       link.download = `qr_card_${client.slug}.png`;
@@ -55,7 +55,7 @@ export default function QRDisplay({ client }: { client: Client }) {
     }
   };
 
-  // Ensure the title is not "Review u on Google"
+  // Use the client's title if valid, otherwise fallback to "Review us on Google"
   const title = client.qr_title && client.qr_title !== 'Review u on Google' 
     ? client.qr_title 
     : 'Review us on Google';
@@ -68,7 +68,7 @@ export default function QRDisplay({ client }: { client: Client }) {
         style={{
           boxShadow: '0 20px 60px -15px rgba(0,0,0,0.2)',
           width: '400px',
-          height: '540px', // increased height
+          height: '560px',
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center',
@@ -81,7 +81,7 @@ export default function QRDisplay({ client }: { client: Client }) {
         </div>
 
         {/* QR Code */}
-        <div className="flex justify-center" style={{ marginBottom: '12px' }}>
+        <div className="flex justify-center" style={{ marginBottom: '16px' }}>
           {loading ? (
             <div className="w-48 h-48 bg-gray-100 rounded-xl flex items-center justify-center text-gray-400 border-2 border-dashed border-gray-300">
               Generating QR…
@@ -110,17 +110,17 @@ export default function QRDisplay({ client }: { client: Client }) {
               <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
             </svg>
           </div>
-          <div className="mt-1">
+          <div className="mt-2">
             <span className="text-xl font-medium text-gray-700">Google</span>
           </div>
-          <div className="flex justify-center space-x-0.5 text-2xl text-yellow-500 mt-1">
+          <div className="flex justify-center space-x-0.5 text-2xl text-yellow-500 mt-2">
             <span>&#9733;</span><span>&#9733;</span><span>&#9733;</span><span>&#9733;</span><span>&#9733;</span>
           </div>
 
-          {/* Bottom text – with explicit margins */}
+          {/* Bottom text – with generous spacing */}
           <div className="mt-3">
-            <p className="text-sm text-gray-600 font-medium" style={{ marginBottom: '4px' }}>{title}</p>
-            <p className="text-xs text-gray-400" style={{ marginBottom: '4px' }}>{client.qr_subtitle || 'Your feedback helps us improve and grow.'}</p>
+            <p className="text-sm text-gray-600 font-medium" style={{ marginBottom: '8px' }}>{title}</p>
+            <p className="text-xs text-gray-400" style={{ marginBottom: '8px' }}>{client.qr_subtitle || 'Your feedback helps us improve and grow.'}</p>
             <p className="text-xs text-gray-400 italic" style={{ marginTop: '4px' }}>{client.qr_tagline || 'Good days start with coffee 😊'}</p>
           </div>
         </div>
