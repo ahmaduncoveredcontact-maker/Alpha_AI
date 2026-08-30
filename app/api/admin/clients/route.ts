@@ -105,10 +105,12 @@ export async function POST(req: NextRequest) {
     }
 
     // 3. Generate QR codes
-    const redirectUrl = `${process.env.NEXT_PUBLIC_BASE_URL}/r/${slug}`;
+    
     let qrUrls;
     try {
-      const qrBuffers = await generateQRImages(redirectUrl);
+        // Use Google review link directly if provided, otherwise use redirect URL
+  const qrTargetUrl = body.google_review_link || `${process.env.NEXT_PUBLIC_BASE_URL}/r/${slug}`;
+  const qrBuffers = await generateQRImages(qrTargetUrl);
       qrUrls = await uploadQRImages(slug, qrBuffers);
     } catch (error: any) {
       console.error('QR generation error:', error);
