@@ -64,7 +64,6 @@ export default function AdminDashboardClient({ clients }: { clients: Client[] })
       </header>
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Stats */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
           <div className="bg-white rounded-xl shadow-sm p-5 border border-gray-100 flex items-center justify-between hover:shadow-md transition-shadow">
             <div>
@@ -95,7 +94,6 @@ export default function AdminDashboardClient({ clients }: { clients: Client[] })
           </div>
         </div>
 
-        {/* Actions & Filters */}
         <div className="bg-white rounded-xl shadow-sm p-5 border border-gray-100 mb-6">
           <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
             <div className="flex flex-wrap gap-2">
@@ -127,7 +125,6 @@ export default function AdminDashboardClient({ clients }: { clients: Client[] })
           </div>
         </div>
 
-        {/* Clients Table */}
         <div className="bg-white rounded-xl shadow-sm overflow-hidden border border-gray-100">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">

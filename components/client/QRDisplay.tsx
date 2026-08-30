@@ -16,10 +16,8 @@ export default function QRDisplay({ client }: { client: Client }) {
   const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Target URL for QR: use google_review_link if available, else redirect URL
   const targetUrl = client.google_review_link || `${process.env.NEXT_PUBLIC_BASE_URL}/r/${client.slug}`;
 
-  // Generate QR code whenever the target URL changes
   useEffect(() => {
     setLoading(true);
     QRCode.toDataURL(targetUrl, { width: 200, margin: 2, color: { dark: '#000000', light: '#ffffff' } })
@@ -33,7 +31,6 @@ export default function QRDisplay({ client }: { client: Client }) {
       });
   }, [targetUrl]);
 
-  // Download QR with custom size
   const downloadQR = async (size: number, filename: string) => {
     try {
       const dataUrl = await QRCode.toDataURL(targetUrl, { width: size, margin: 2, color: { dark: '#000000', light: '#ffffff' } });
@@ -56,7 +53,7 @@ export default function QRDisplay({ client }: { client: Client }) {
         <div className="flex justify-center mb-6">
           {loading ? (
             <div className="w-48 h-48 bg-gray-100 rounded-xl flex items-center justify-center text-gray-400 border-2 border-dashed border-gray-300">
-              Generating QRâ€¦
+              Generating QR…
             </div>
           ) : qrDataUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
@@ -87,11 +84,10 @@ export default function QRDisplay({ client }: { client: Client }) {
           </div>
           <p className="text-sm text-gray-600 font-medium mt-1">{client.qr_title || 'Review us on Google'}</p>
           <p className="text-xs text-gray-400">{client.qr_subtitle || 'Your feedback helps us improve and grow.'}</p>
-          <p className="text-xs text-gray-400 italic mt-1">{client.qr_tagline || 'Good days start with coffee â¤ï¸'}</p>
+          <p className="text-xs text-gray-400 italic mt-1">{client.qr_tagline || 'Good days start with coffee 😊'}</p>
         </div>
       </div>
 
-      {/* Download Buttons */}
       <div className="mt-6 flex flex-wrap justify-center gap-3">
         <button
           onClick={() => downloadQR(500, 'qr_main.png')}

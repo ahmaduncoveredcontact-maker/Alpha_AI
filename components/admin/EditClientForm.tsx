@@ -87,7 +87,7 @@ export default function EditClientForm({ client }: { client: Client }) {
   };
 
   const handleDelete = async () => {
-    if (!confirm(`ÃƒÂ¢Ã…Â¡Ã‚Â ÃƒÂ¯Ã‚Â¸Ã‚Â Are you sure you want to delete "${client.business_name}"? This action cannot be undone.`)) return;
+    if (!confirm(`⚠️ Are you sure you want to delete "${client.business_name}"? This action cannot be undone.`)) return;
     if (!confirm(`Final confirmation: Delete "${client.business_name}" and all associated data?`)) return;
     setLoading(true);
     const res = await fetch(`/api/admin/clients/${client.slug}`, {
@@ -104,7 +104,6 @@ export default function EditClientForm({ client }: { client: Client }) {
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-      {/* Main form ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Å“ 2/3 */}
       <div className="lg:col-span-2 space-y-6">
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Basic Info */}
@@ -168,7 +167,7 @@ export default function EditClientForm({ client }: { client: Client }) {
             </div>
           </div>
 
-          {/* Links */}
+          {/* Calendar & Review Links */}
           <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
             <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
               <span className="w-1 h-6 bg-gray-800 rounded-full"></span>
@@ -190,14 +189,14 @@ export default function EditClientForm({ client }: { client: Client }) {
                   onChange={(e) => setForm({ ...form, google_review_link: e.target.value })}
                   className="mt-1 w-full border border-gray-300 rounded-lg px-4 py-2"
                 />
-                <p className="text-xs text-gray-400 mt-1">
-                  Changing this link updates the QR code redirect automatically.
+                <p className="text-xs text-amber-600 mt-1">
+                  ✅ The QR code updates automatically when you change the review link – no regeneration needed.
                 </p>
               </div>
             </div>
           </div>
 
-          {/* QR Customization */}
+          {/* QR Card Text */}
           <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
             <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
               <span className="w-1 h-6 bg-gray-800 rounded-full"></span>
@@ -223,7 +222,7 @@ export default function EditClientForm({ client }: { client: Client }) {
               <div>
                 <label className="block text-sm font-medium text-gray-700">Tagline (bottom)</label>
                 <input
-                  value={form.qr_tagline || 'Good days start with coffee ÃƒÂ¢Ã‚ÂÃ‚Â¤ÃƒÂ¯Ã‚Â¸Ã‚Â'}
+                  value={form.qr_tagline || 'Good days start with coffee 😊'}
                   onChange={(e) => setForm({ ...form, qr_tagline: e.target.value })}
                   className="mt-1 w-full border border-gray-300 rounded-lg px-4 py-2"
                 />
@@ -294,7 +293,6 @@ export default function EditClientForm({ client }: { client: Client }) {
             </div>
           </div>
 
-          {/* Save Actions */}
           <div className="flex flex-wrap gap-4 pt-2">
             <button
               type="submit"
@@ -330,10 +328,9 @@ export default function EditClientForm({ client }: { client: Client }) {
         </div>
       </div>
 
-      {/* Sidebar ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Å“ 1/3 */}
       <div className="lg:col-span-1 space-y-6">
         <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
-          <h4 className="font-medium text-gray-700 mb-4 text-center">ÃƒÂ°Ã…Â¸Ã¢â‚¬Å“Ã‚Â± QR Card Preview</h4>
+          <h4 className="font-medium text-gray-700 mb-4 text-center">📱 QR Card Preview</h4>
           <div className="border rounded-lg p-4 bg-gray-50">
             <QRDisplay client={form} />
           </div>
@@ -354,7 +351,7 @@ export default function EditClientForm({ client }: { client: Client }) {
             rel="noopener noreferrer"
             className="inline-block text-indigo-600 hover:text-indigo-800 font-medium"
           >
-            Open Client Dashboard ÃƒÂ¢Ã¢â‚¬Â Ã¢â‚¬â„¢
+            Open Client Dashboard →
           </a>
         </div>
       </div>
