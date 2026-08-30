@@ -42,7 +42,8 @@ export default function QRDisplay({ client }: { client: Client }) {
         backgroundColor: '#ffffff',
         logging: false,
         allowTaint: false,
-        // Remove any extra shadow by capturing only the element
+        width: 400,
+        height: 520,
       });
       const link = document.createElement('a');
       link.download = `qr_card_${client.slug}.png`;
@@ -56,17 +57,27 @@ export default function QRDisplay({ client }: { client: Client }) {
 
   return (
     <div className="flex flex-col items-center">
-      {/* The card itself – exactly as shown */}
+      {/* The card – exactly as shown on dashboard */}
       <div
         ref={cardRef}
         className="bg-white rounded-2xl p-8 max-w-sm w-full"
-        style={{ boxShadow: '0 20px 60px -15px rgba(0,0,0,0.2)' }}
+        style={{
+          boxShadow: '0 20px 60px -15px rgba(0,0,0,0.2)',
+          width: '400px',
+          height: '520px',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+        }}
       >
-        <div className="text-center mb-4">
+        {/* Business name */}
+        <div className="text-center" style={{ marginBottom: '16px' }}>
           <h3 className="text-2xl font-bold text-gray-800 tracking-tight">{client.business_name}</h3>
         </div>
 
-        <div className="flex justify-center mb-6">
+        {/* QR Code */}
+        <div className="flex justify-center" style={{ marginBottom: '20px' }}>
           {loading ? (
             <div className="w-48 h-48 bg-gray-100 rounded-xl flex items-center justify-center text-gray-400 border-2 border-dashed border-gray-300">
               Generating QR…
@@ -85,7 +96,8 @@ export default function QRDisplay({ client }: { client: Client }) {
           )}
         </div>
 
-        <div className="text-center space-y-1">
+        {/* Google branding */}
+        <div className="text-center space-y-1" style={{ marginBottom: '8px' }}>
           <div className="flex justify-center items-center space-x-2">
             <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
               <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4"/>
@@ -104,7 +116,7 @@ export default function QRDisplay({ client }: { client: Client }) {
         </div>
       </div>
 
-      {/* Single Download Button */}
+      {/* Download Button */}
       <button
         onClick={downloadCard}
         className="mt-6 bg-gradient-to-r from-indigo-600 to-purple-600 text-white px-8 py-3 rounded-xl font-medium shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-200 flex items-center gap-2"
