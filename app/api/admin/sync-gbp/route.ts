@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/admin';
-import { gbp } from '@/lib/reviews/gbp';
 
 export async function POST(req: NextRequest) {
   const { slug } = await req.json();
@@ -8,50 +7,31 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Missing slug' }, { status: 400 });
   }
 
-  const { data: client, error } = await supabaseAdmin
-    .from('clients')
-    .select('*')
-    .eq('slug', slug)
-    .single();
+  // 1. Simulate a 1.5-second network delay to mimic Google's API
+  await new Promise((resolve) => setTimeout(resolve, 1500));
 
-  if (error || !client) {
-    return NextResponse.json({ error: 'Client not found' }, { status: 404 });
-  }
+  // 2. Generate fake Google IDs for testing
+  const fakeAccountId = 'mock_account_987654321';
+  const fakeLocationId = 'mock_location_123456789';
 
-  const accounts = await gbp.listAccounts();
-  if (!accounts.length) {
-    return NextResponse.json({ error: 'No GBP accounts found for this service account' }, { status: 404 });
-  }
-
-  const account = accounts[0];
-  const accountId = account.name?.split('/').pop();
-  if (!accountId) {
-    return NextResponse.json({ error: 'Could not extract account ID' }, { status: 500 });
-  }
-
-  const locations = await gbp.listLocations(accountId);
-  if (!locations.length) {
-    return NextResponse.json({ error: 'No locations found for this account' }, { status: 404 });
-  }
-
-  const location = locations[0];
-  const locationId = location.name?.split('/').pop();
-  if (!locationId) {
-    return NextResponse.json({ error: 'Could not extract location ID' }, { status: 500 });
-  }
-
-  await supabaseAdmin
+  // 3. Save the fake IDs to Supabase
+  const { error } = await supabaseAdmin
     .from('clients')
     .update({
-      gbp_account_id: accountId,
-      gbp_location_id: locationId,
+      gbp_account_id: fakeAccountId,
+      gbp_location_id: fakeLocationId,
     })
-    .eq('id', client.id);
+    .eq('slug', slug);
 
+  if (error) {
+    return NextResponse.json({ error: 'Database update failed' }, { status: 500 });
+  }
+
+  // 4. Return success response to the frontend
   return NextResponse.json({
-    accountId,
-    locationId,
-    accountName: account.accountName || account.name || '',
-    locationName: location.title || location.name || '',
+    accountId: fakeAccountId,
+    locationId: fakeLocationId,
+    accountName: 'Alpha AI Test Business',
+    locationName: 'Developer Mock Location',
   });
 }
