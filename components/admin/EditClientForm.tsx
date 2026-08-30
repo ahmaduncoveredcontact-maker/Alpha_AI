@@ -86,104 +86,158 @@ export default function EditClientForm({ client }: { client: Client }) {
     }
   };
 
+  const handleDelete = async () => {
+    if (!confirm(`⚠️ Are you sure you want to delete "${client.business_name}"? This action cannot be undone.`)) return;
+    if (!confirm(`Final confirmation: Delete "${client.business_name}" and all associated data?`)) return;
+    setLoading(true);
+    const res = await fetch(`/api/admin/clients/${client.slug}`, {
+      method: 'DELETE',
+    });
+    setLoading(false);
+    if (res.ok) {
+      router.push('/admin');
+    } else {
+      const err = await res.json();
+      alert(`Delete failed: ${err.error}`);
+    }
+  };
+
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-      {/* Main form â€“ 2/3 width */}
-      <div className="lg:col-span-2">
-        <div className="bg-white rounded-xl shadow-lg p-6">
-          <form onSubmit={handleSubmit} className="space-y-5">
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Business Name</label>
-              <input
-                value={form.business_name}
-                onChange={(e) => setForm({ ...form, business_name: e.target.value })}
-                className="mt-1 w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-black focus:border-transparent"
-              />
+      {/* Main form – 2/3 */}
+      <div className="lg:col-span-2 space-y-6">
+        <form onSubmit={handleSubmit} className="space-y-6">
+          {/* Basic Info */}
+          <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+            <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+              <span className="w-1 h-6 bg-gray-800 rounded-full"></span>
+              Basic Information
+            </h3>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Business Name</label>
+                <input
+                  value={form.business_name}
+                  onChange={(e) => setForm({ ...form, business_name: e.target.value })}
+                  className="mt-1 w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-black focus:border-transparent"
+                />
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Phone</label>
+                  <input
+                    value={form.phone || ''}
+                    onChange={(e) => setForm({ ...form, phone: e.target.value })}
+                    className="mt-1 w-full border border-gray-300 rounded-lg px-4 py-2"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Email</label>
+                  <input
+                    value={form.email || ''}
+                    onChange={(e) => setForm({ ...form, email: e.target.value })}
+                    className="mt-1 w-full border border-gray-300 rounded-lg px-4 py-2"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Delivery Address</label>
+                <input
+                  value={form.delivery_address || ''}
+                  onChange={(e) => setForm({ ...form, delivery_address: e.target.value })}
+                  className="mt-1 w-full border border-gray-300 rounded-lg px-4 py-2"
+                />
+              </div>
             </div>
+          </div>
+
+          {/* Voice Instructions */}
+          <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+            <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+              <span className="w-1 h-6 bg-gray-800 rounded-full"></span>
+              Voice Instructions
+            </h3>
             <div>
-              <label className="block text-sm font-medium text-gray-700">Voice Instructions</label>
+              <label className="block text-sm font-medium text-gray-700">Instructions for the AI assistant</label>
               <textarea
-                rows={4}
+                rows={6}
                 value={form.voice_instructions}
                 onChange={(e) => setForm({ ...form, voice_instructions: e.target.value })}
                 className="mt-1 w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-black"
               />
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          </div>
+
+          {/* Links */}
+          <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+            <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+              <span className="w-1 h-6 bg-gray-800 rounded-full"></span>
+              Calendar & Review Links
+            </h3>
+            <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700">Phone</label>
+                <label className="block text-sm font-medium text-gray-700">Calendar Link</label>
                 <input
-                  value={form.phone || ''}
-                  onChange={(e) => setForm({ ...form, phone: e.target.value })}
+                  value={form.calendar_link || ''}
+                  onChange={(e) => setForm({ ...form, calendar_link: e.target.value })}
                   className="mt-1 w-full border border-gray-300 rounded-lg px-4 py-2"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700">Email</label>
+                <label className="block text-sm font-medium text-gray-700">Google Review Link</label>
                 <input
-                  value={form.email || ''}
-                  onChange={(e) => setForm({ ...form, email: e.target.value })}
+                  value={form.google_review_link || ''}
+                  onChange={(e) => setForm({ ...form, google_review_link: e.target.value })}
+                  className="mt-1 w-full border border-gray-300 rounded-lg px-4 py-2"
+                />
+                <p className="text-xs text-gray-400 mt-1">
+                  Changing this link updates the QR code redirect automatically.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* QR Customization */}
+          <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+            <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+              <span className="w-1 h-6 bg-gray-800 rounded-full"></span>
+              QR Card Text Customization
+            </h3>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Title (above stars)</label>
+                <input
+                  value={form.qr_title || 'Review us on Google'}
+                  onChange={(e) => setForm({ ...form, qr_title: e.target.value })}
+                  className="mt-1 w-full border border-gray-300 rounded-lg px-4 py-2"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Subtitle (below stars)</label>
+                <input
+                  value={form.qr_subtitle || 'Your feedback helps us improve and grow.'}
+                  onChange={(e) => setForm({ ...form, qr_subtitle: e.target.value })}
+                  className="mt-1 w-full border border-gray-300 rounded-lg px-4 py-2"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Tagline (bottom)</label>
+                <input
+                  value={form.qr_tagline || 'Good days start with coffee ❤️'}
+                  onChange={(e) => setForm({ ...form, qr_tagline: e.target.value })}
                   className="mt-1 w-full border border-gray-300 rounded-lg px-4 py-2"
                 />
               </div>
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Calendar Link</label>
-              <input
-                value={form.calendar_link || ''}
-                onChange={(e) => setForm({ ...form, calendar_link: e.target.value })}
-                className="mt-1 w-full border border-gray-300 rounded-lg px-4 py-2"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Google Review Link</label>
-              <input
-                value={form.google_review_link || ''}
-                onChange={(e) => setForm({ ...form, google_review_link: e.target.value })}
-                className="mt-1 w-full border border-gray-300 rounded-lg px-4 py-2"
-              />
-              <p className="text-xs text-gray-400 mt-1">
-                This link is used by the QR code â€“ update it anytime.
-              </p>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Delivery Address</label>
-              <input
-                value={form.delivery_address || ''}
-                onChange={(e) => setForm({ ...form, delivery_address: e.target.value })}
-                className="mt-1 w-full border border-gray-300 rounded-lg px-4 py-2"
-              />
-            </div>
+          </div>
 
-            <hr className="border-gray-200" />
-            <h3 className="font-medium text-gray-900">QR Card Text â€“ Fully Editable</h3>
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Title (above stars)</label>
-              <input
-                value={form.qr_title || 'Review us on Google'}
-                onChange={(e) => setForm({ ...form, qr_title: e.target.value })}
-                className="mt-1 w-full border border-gray-300 rounded-lg px-4 py-2"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Subtitle (below stars)</label>
-              <input
-                value={form.qr_subtitle || 'Your feedback helps us improve and grow.'}
-                onChange={(e) => setForm({ ...form, qr_subtitle: e.target.value })}
-                className="mt-1 w-full border border-gray-300 rounded-lg px-4 py-2"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Tagline (bottom)</label>
-              <input
-                value={form.qr_tagline || 'Good days start with coffee â¤ï¸'}
-                onChange={(e) => setForm({ ...form, qr_tagline: e.target.value })}
-                className="mt-1 w-full border border-gray-300 rounded-lg px-4 py-2"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <label className="block text-sm font-medium text-gray-700">Toggles</label>
+          {/* Toggles & Integrations */}
+          <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+            <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+              <span className="w-1 h-6 bg-gray-800 rounded-full"></span>
+              Toggles & Integrations
+            </h3>
+            <div className="space-y-3">
               <div className="flex items-center space-x-2">
                 <input
                   type="checkbox"
@@ -191,7 +245,7 @@ export default function EditClientForm({ client }: { client: Client }) {
                   onChange={() => handleToggle('outbound_calling_enabled')}
                   className="h-4 w-4 rounded border-gray-300 text-black focus:ring-black"
                 />
-                <label className="text-sm text-gray-600">Outbound Calling Enabled</label>
+                <label className="text-sm text-gray-700">Outbound Calling Enabled</label>
               </div>
               <div className="flex items-center space-x-2">
                 <input
@@ -200,7 +254,7 @@ export default function EditClientForm({ client }: { client: Client }) {
                   onChange={() => handleToggle('consent_confirmed')}
                   className="h-4 w-4 rounded border-gray-300 text-black focus:ring-black"
                 />
-                <label className="text-sm text-gray-600">Consent Checkbox Confirmed</label>
+                <label className="text-sm text-gray-700">Consent Checkbox Confirmed</label>
               </div>
               <div className="flex items-center space-x-2">
                 <input
@@ -209,81 +263,90 @@ export default function EditClientForm({ client }: { client: Client }) {
                   onChange={() => handleToggle('manager_access_granted')}
                   className="h-4 w-4 rounded border-gray-300 text-black focus:ring-black"
                 />
-                <label className="text-sm text-gray-600">Manager Access Granted</label>
+                <label className="text-sm text-gray-700">Manager Access Granted</label>
               </div>
             </div>
 
-            <hr className="border-gray-200" />
-            <div>
-              <h3 className="font-medium text-gray-900">Google Business Profile Integration</h3>
-              <div className="mt-2 space-y-2">
-                <div>
-                  <label className="block text-xs text-gray-500">GBP Account ID</label>
-                  <input
-                    value={form.gbp_account_id || ''}
-                    onChange={(e) => setForm({ ...form, gbp_account_id: e.target.value })}
-                    className="mt-1 w-full border border-gray-300 rounded-lg px-4 py-2 text-sm"
-                    placeholder="Auto-filled after sync"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs text-gray-500">GBP Location ID</label>
-                  <input
-                    value={form.gbp_location_id || ''}
-                    onChange={(e) => setForm({ ...form, gbp_location_id: e.target.value })}
-                    className="mt-1 w-full border border-gray-300 rounded-lg px-4 py-2 text-sm"
-                    placeholder="Auto-filled after sync"
-                  />
-                </div>
-                <button
-                  type="button"
-                  onClick={handleSyncGBP}
-                  disabled={syncing}
-                  className="mt-2 bg-blue-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-700 disabled:opacity-50"
-                >
-                  {syncing ? 'Syncing...' : 'Sync GBP Locations'}
-                </button>
-              </div>
-            </div>
-
-            <div className="flex flex-wrap gap-4 pt-4 border-t">
-              <button
-                type="submit"
-                disabled={loading}
-                className="bg-black text-white px-6 py-2.5 rounded-lg hover:bg-gray-800 disabled:opacity-50"
-              >
-                {loading ? 'Saving...' : 'Save Changes'}
-              </button>
+            <hr className="my-4" />
+            <div className="space-y-2">
+              <label className="block text-sm font-medium text-gray-700">GBP Account ID</label>
+              <input
+                value={form.gbp_account_id || ''}
+                onChange={(e) => setForm({ ...form, gbp_account_id: e.target.value })}
+                className="mt-1 w-full border border-gray-300 rounded-lg px-4 py-2 text-sm"
+                placeholder="Auto-filled after sync"
+              />
+              <label className="block text-sm font-medium text-gray-700 mt-2">GBP Location ID</label>
+              <input
+                value={form.gbp_location_id || ''}
+                onChange={(e) => setForm({ ...form, gbp_location_id: e.target.value })}
+                className="mt-1 w-full border border-gray-300 rounded-lg px-4 py-2 text-sm"
+                placeholder="Auto-filled after sync"
+              />
               <button
                 type="button"
-                onClick={handleRegenerateWebhook}
-                className="bg-red-600 text-white px-6 py-2.5 rounded-lg hover:bg-red-700"
+                onClick={handleSyncGBP}
+                disabled={syncing}
+                className="mt-2 bg-blue-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-700 disabled:opacity-50"
               >
-                Regenerate Webhook
+                {syncing ? 'Syncing...' : 'Sync GBP Locations'}
               </button>
             </div>
-          </form>
+          </div>
+
+          {/* Save Actions */}
+          <div className="flex flex-wrap gap-4 pt-2">
+            <button
+              type="submit"
+              disabled={loading}
+              className="bg-gray-900 text-white px-6 py-2.5 rounded-lg hover:bg-gray-800 disabled:opacity-50 shadow-sm"
+            >
+              {loading ? 'Saving...' : 'Save Changes'}
+            </button>
+            <button
+              type="button"
+              onClick={handleRegenerateWebhook}
+              className="bg-amber-600 text-white px-6 py-2.5 rounded-lg hover:bg-amber-700"
+            >
+              Regenerate Webhook
+            </button>
+          </div>
+        </form>
+
+        {/* Danger Zone */}
+        <div className="bg-white rounded-xl shadow-sm p-6 border border-red-200">
+          <h3 className="text-lg font-semibold text-red-600 mb-2 flex items-center gap-2">
+            <span className="w-1 h-6 bg-red-600 rounded-full"></span>
+            Danger Zone
+          </h3>
+          <p className="text-sm text-gray-500 mb-4">Deleting this client will permanently remove all data, call logs, and settings.</p>
+          <button
+            onClick={handleDelete}
+            disabled={loading}
+            className="bg-red-600 text-white px-6 py-2.5 rounded-lg hover:bg-red-700 disabled:opacity-50 shadow-sm"
+          >
+            Delete Client
+          </button>
         </div>
       </div>
 
-      {/* Sidebar â€“ 1/3 width */}
+      {/* Sidebar – 1/3 */}
       <div className="lg:col-span-1 space-y-6">
-        {/* QR Card Preview */}
-        <div className="bg-white rounded-xl shadow-lg p-6">
-          <h4 className="font-medium text-gray-700 mb-4 text-center">ðŸ“± QR Card Preview</h4>
+        <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+          <h4 className="font-medium text-gray-700 mb-4 text-center">📱 QR Card Preview</h4>
           <div className="border rounded-lg p-4 bg-gray-50">
             <QRDisplay client={form} />
           </div>
           <p className="text-xs text-gray-400 mt-3 text-center">
-            This preview updates live as you edit the fields.
+            Preview updates live as you edit fields.
           </p>
         </div>
 
-        <div className="bg-white rounded-xl shadow-lg p-6">
+        <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
           <WebhookUrlDisplay webhookUrl={form.webhook_url} />
         </div>
 
-        <div className="bg-white rounded-xl shadow-lg p-6">
+        <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
           <h4 className="font-medium text-gray-700 mb-2">Quick Links</h4>
           <a
             href={`/live/${form.slug}`}
@@ -291,7 +354,7 @@ export default function EditClientForm({ client }: { client: Client }) {
             rel="noopener noreferrer"
             className="inline-block text-indigo-600 hover:text-indigo-800 font-medium"
           >
-            Open Client Dashboard â†’
+            Open Client Dashboard →
           </a>
         </div>
       </div>

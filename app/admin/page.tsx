@@ -2,10 +2,9 @@ import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import Link from 'next/link';
-import { Pencil, ExternalLink, Users, CheckCircle, Clock } from 'lucide-react';
+import { Pencil, ExternalLink, Users, CheckCircle, Clock, Trash2 } from 'lucide-react';
 
 export default async function AdminDashboardPage() {
-  // Auth check
   const cookieStore = await cookies();
   const session = cookieStore.get('admin_session');
   if (!session || session.value !== 'authenticated') {
@@ -29,12 +28,11 @@ export default async function AdminDashboardPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-gray-100">
-      {/* Header */}
       <header className="bg-gradient-to-r from-gray-900 to-gray-700 text-white shadow-lg">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-5 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
           <div className="flex items-center space-x-3">
             <div className="bg-white/10 rounded-lg px-3 py-1.5">
-              <span className="text-xl font-bold tracking-tight">Î±</span>
+              <span className="text-xl font-bold tracking-tight">α</span>
             </div>
             <div>
               <h1 className="text-2xl font-bold tracking-tight">Alpha AI</h1>
@@ -49,7 +47,7 @@ export default async function AdminDashboardPage() {
       </header>
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Stats Cards */}
+        {/* Stats */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
           <div className="bg-white rounded-xl shadow-sm p-5 border border-gray-100 flex items-center justify-between hover:shadow-md transition-shadow">
             <div>
@@ -145,12 +143,32 @@ export default async function AdminDashboardPage() {
                         Edit
                       </Link>
                       <Link
-                        href={`/live/${client.slug}?auto=1`}
+                        href={`/live/${client.slug}`}
                         className="inline-flex items-center gap-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
                       >
                         <ExternalLink className="w-3.5 h-3.5" />
                         Dashboard
                       </Link>
+                      <button
+                        onClick={async () => {
+                          if (!confirm(`⚠️ Are you sure you want to delete "${client.business_name}"? This action cannot be undone.`)) return;
+                          if (!confirm(`Final confirmation: Delete "${client.business_name}" and all associated data?`)) return;
+                          const res = await fetch(`/api/admin/clients/${client.slug}`, {
+                            method: 'DELETE',
+                          });
+                          if (res.ok) {
+                            // Refresh page or remove row
+                            window.location.reload();
+                          } else {
+                            const err = await res.json();
+                            alert(`Delete failed: ${err.error}`);
+                          }
+                        }}
+                        className="inline-flex items-center gap-1.5 bg-red-50 hover:bg-red-100 text-red-600 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                        Delete
+                      </button>
                     </td>
                   </tr>
                 ))}
@@ -166,13 +184,11 @@ export default async function AdminDashboardPage() {
           </div>
         </div>
 
-        {/* Footer */}
         <footer className="mt-6 text-center text-xs text-gray-400 border-t border-gray-200 pt-4">
-          &copy; {new Date().getFullYear()} Alpha AI â€“ All rights reserved.
+          &copy; {new Date().getFullYear()} Alpha AI – All rights reserved.
         </footer>
       </main>
 
-      {/* Client-side filter logic */}
       <script dangerouslySetInnerHTML={{
         __html: `
           (function() {
