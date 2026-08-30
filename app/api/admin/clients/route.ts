@@ -104,7 +104,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: `DB insert failed: ${error.message}` }, { status: 500 });
     }
 
-    // 3. QR codes are now generated dynamically on the client side – no static storage needed.
+    // 3. QR codes are now generated dynamically on the client side â€“ no static storage needed.
 
     // 4. Create Google Sheet tab
     try {
@@ -127,7 +127,7 @@ export async function POST(req: NextRequest) {
       client,
       accessCode,
       webhookUrl,
-      qrUrls,
+      
     }, { status: 201 });
 
   } catch (error: any) {
