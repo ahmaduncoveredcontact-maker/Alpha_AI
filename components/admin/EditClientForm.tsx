@@ -108,7 +108,6 @@ export default function EditClientForm({ client }: { client: Client }) {
     }
   };
 
-  // Password reset handler
   const handleResetPassword = async () => {
     setResetPassword({ ...resetPassword, message: '', error: '' });
     if (resetPassword.newCode.length < 4) {
@@ -133,20 +132,27 @@ export default function EditClientForm({ client }: { client: Client }) {
         message: data.message || 'Password reset successfully!',
         error: '',
       });
-      // Optionally refresh to show updated data (but access_code_hash is hidden)
     } else {
       setResetPassword({ ...resetPassword, error: data.error || 'Reset failed.' });
     }
   };
+
+  // Reusable Google Gradient Pill for Headers
+  const GooglePill = () => (
+    <span 
+      className="w-1.5 h-6 rounded-full" 
+      style={{ background: 'linear-gradient(180deg, #4285F4 0%, #EA4335 33%, #FBBC05 66%, #34A853 100%)' }}
+    />
+  );
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
       <div className="lg:col-span-2 space-y-6">
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Basic Info */}
-          <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+          <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100 transition duration-300 hover:shadow-md hover:border-blue-100">
             <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
-              <span className="w-1 h-6 bg-gray-800 rounded-full"></span>
+              <GooglePill />
               Basic Information
             </h3>
             <div className="space-y-4">
@@ -155,7 +161,7 @@ export default function EditClientForm({ client }: { client: Client }) {
                 <input
                   value={form.business_name}
                   onChange={(e) => setForm({ ...form, business_name: e.target.value })}
-                  className="mt-1 w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-black focus:border-transparent"
+                  className="mt-1 w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-[#4285F4] focus:border-transparent outline-none transition"
                 />
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -164,7 +170,7 @@ export default function EditClientForm({ client }: { client: Client }) {
                   <input
                     value={form.phone || ''}
                     onChange={(e) => setForm({ ...form, phone: e.target.value })}
-                    className="mt-1 w-full border border-gray-300 rounded-lg px-4 py-2"
+                    className="mt-1 w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-[#4285F4] outline-none transition"
                   />
                 </div>
                 <div>
@@ -172,7 +178,7 @@ export default function EditClientForm({ client }: { client: Client }) {
                   <input
                     value={form.email || ''}
                     onChange={(e) => setForm({ ...form, email: e.target.value })}
-                    className="mt-1 w-full border border-gray-300 rounded-lg px-4 py-2"
+                    className="mt-1 w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-[#4285F4] outline-none transition"
                   />
                 </div>
               </div>
@@ -181,16 +187,16 @@ export default function EditClientForm({ client }: { client: Client }) {
                 <input
                   value={form.delivery_address || ''}
                   onChange={(e) => setForm({ ...form, delivery_address: e.target.value })}
-                  className="mt-1 w-full border border-gray-300 rounded-lg px-4 py-2"
+                  className="mt-1 w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-[#4285F4] outline-none transition"
                 />
               </div>
             </div>
           </div>
 
           {/* Voice Instructions */}
-          <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+          <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100 transition duration-300 hover:shadow-md hover:border-red-100">
             <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
-              <span className="w-1 h-6 bg-gray-800 rounded-full"></span>
+              <GooglePill />
               Voice Instructions
             </h3>
             <div>
@@ -199,15 +205,15 @@ export default function EditClientForm({ client }: { client: Client }) {
                 rows={6}
                 value={form.voice_instructions}
                 onChange={(e) => setForm({ ...form, voice_instructions: e.target.value })}
-                className="mt-1 w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-black"
+                className="mt-1 w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-[#EA4335] focus:border-transparent outline-none transition"
               />
             </div>
           </div>
 
           {/* Links */}
-          <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+          <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100 transition duration-300 hover:shadow-md hover:border-yellow-200">
             <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
-              <span className="w-1 h-6 bg-gray-800 rounded-full"></span>
+              <GooglePill />
               Calendar & Review Links
             </h3>
             <div className="space-y-4">
@@ -216,7 +222,7 @@ export default function EditClientForm({ client }: { client: Client }) {
                 <input
                   value={form.calendar_link || ''}
                   onChange={(e) => setForm({ ...form, calendar_link: e.target.value })}
-                  className="mt-1 w-full border border-gray-300 rounded-lg px-4 py-2"
+                  className="mt-1 w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-[#FBBC05] outline-none transition"
                 />
               </div>
               <div>
@@ -224,19 +230,19 @@ export default function EditClientForm({ client }: { client: Client }) {
                 <input
                   value={form.google_review_link || ''}
                   onChange={(e) => setForm({ ...form, google_review_link: e.target.value })}
-                  className="mt-1 w-full border border-gray-300 rounded-lg px-4 py-2"
+                  className="mt-1 w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-[#FBBC05] outline-none transition"
                 />
-                <p className="text-xs text-amber-600 mt-1">
-                  ✅ The QR code updates automatically when you change the review link – no regeneration needed.
+                <p className="text-xs text-gray-500 mt-1">
+                  <span style={{ color: '#34A853', fontWeight: 'bold' }}>✓</span> The QR code updates automatically when you change the review link.
                 </p>
               </div>
             </div>
           </div>
 
           {/* QR Card Text */}
-          <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+          <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100 transition duration-300 hover:shadow-md hover:border-green-100">
             <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
-              <span className="w-1 h-6 bg-gray-800 rounded-full"></span>
+              <GooglePill />
               QR Card Text Customization
             </h3>
             <div className="space-y-4">
@@ -245,7 +251,7 @@ export default function EditClientForm({ client }: { client: Client }) {
                 <input
                   value={form.qr_title || 'Review us on Google'}
                   onChange={(e) => setForm({ ...form, qr_title: e.target.value })}
-                  className="mt-1 w-full border border-gray-300 rounded-lg px-4 py-2"
+                  className="mt-1 w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-[#34A853] outline-none transition"
                 />
               </div>
               <div>
@@ -253,7 +259,7 @@ export default function EditClientForm({ client }: { client: Client }) {
                 <input
                   value={form.qr_subtitle || 'Your feedback helps us improve and grow.'}
                   onChange={(e) => setForm({ ...form, qr_subtitle: e.target.value })}
-                  className="mt-1 w-full border border-gray-300 rounded-lg px-4 py-2"
+                  className="mt-1 w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-[#34A853] outline-none transition"
                 />
               </div>
               <div>
@@ -261,16 +267,16 @@ export default function EditClientForm({ client }: { client: Client }) {
                 <input
                   value={form.qr_tagline || 'Good days start with coffee 😊'}
                   onChange={(e) => setForm({ ...form, qr_tagline: e.target.value })}
-                  className="mt-1 w-full border border-gray-300 rounded-lg px-4 py-2"
+                  className="mt-1 w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-[#34A853] outline-none transition"
                 />
               </div>
             </div>
           </div>
 
           {/* Toggles & Integrations */}
-          <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+          <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100 transition duration-300 hover:shadow-md">
             <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
-              <span className="w-1 h-6 bg-gray-800 rounded-full"></span>
+              <GooglePill />
               Toggles & Integrations
             </h3>
             <div className="space-y-3">
@@ -279,7 +285,7 @@ export default function EditClientForm({ client }: { client: Client }) {
                   type="checkbox"
                   checked={form.outbound_calling_enabled}
                   onChange={() => handleToggle('outbound_calling_enabled')}
-                  className="h-4 w-4 rounded border-gray-300 text-black focus:ring-black"
+                  className="h-4 w-4 rounded border-gray-300 text-[#4285F4] focus:ring-[#4285F4]"
                 />
                 <label className="text-sm text-gray-700">Outbound Calling Enabled</label>
               </div>
@@ -288,7 +294,7 @@ export default function EditClientForm({ client }: { client: Client }) {
                   type="checkbox"
                   checked={form.consent_confirmed}
                   onChange={() => handleToggle('consent_confirmed')}
-                  className="h-4 w-4 rounded border-gray-300 text-black focus:ring-black"
+                  className="h-4 w-4 rounded border-gray-300 text-[#4285F4] focus:ring-[#4285F4]"
                 />
                 <label className="text-sm text-gray-700">Consent Checkbox Confirmed</label>
               </div>
@@ -297,33 +303,35 @@ export default function EditClientForm({ client }: { client: Client }) {
                   type="checkbox"
                   checked={form.manager_access_granted}
                   onChange={() => handleToggle('manager_access_granted')}
-                  className="h-4 w-4 rounded border-gray-300 text-black focus:ring-black"
+                  className="h-4 w-4 rounded border-gray-300 text-[#4285F4] focus:ring-[#4285F4]"
                 />
                 <label className="text-sm text-gray-700">Manager Access Granted</label>
               </div>
             </div>
 
-            <hr className="my-4" />
+            <hr className="my-5 border-gray-100" />
+            
             <div className="space-y-2">
               <label className="block text-sm font-medium text-gray-700">GBP Account ID</label>
               <input
                 value={form.gbp_account_id || ''}
                 onChange={(e) => setForm({ ...form, gbp_account_id: e.target.value })}
-                className="mt-1 w-full border border-gray-300 rounded-lg px-4 py-2 text-sm"
+                className="mt-1 w-full border border-gray-300 rounded-lg px-4 py-2 text-sm focus:ring-2 focus:ring-[#34A853] outline-none"
                 placeholder="Auto-filled after sync"
               />
               <label className="block text-sm font-medium text-gray-700 mt-2">GBP Location ID</label>
               <input
                 value={form.gbp_location_id || ''}
                 onChange={(e) => setForm({ ...form, gbp_location_id: e.target.value })}
-                className="mt-1 w-full border border-gray-300 rounded-lg px-4 py-2 text-sm"
+                className="mt-1 w-full border border-gray-300 rounded-lg px-4 py-2 text-sm focus:ring-2 focus:ring-[#34A853] outline-none"
                 placeholder="Auto-filled after sync"
               />
               <button
                 type="button"
                 onClick={handleSyncGBP}
                 disabled={syncing}
-                className="mt-2 bg-blue-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-700 disabled:opacity-50"
+                style={{ backgroundColor: '#34A853' }}
+                className="mt-3 text-white px-5 py-2 rounded-lg text-sm font-medium hover:opacity-90 disabled:opacity-50 transition shadow-sm"
               >
                 {syncing ? 'Syncing...' : 'Sync GBP Locations'}
               </button>
@@ -335,14 +343,16 @@ export default function EditClientForm({ client }: { client: Client }) {
             <button
               type="submit"
               disabled={loading}
-              className="bg-gray-900 text-white px-6 py-2.5 rounded-lg hover:bg-gray-800 disabled:opacity-50 shadow-sm"
+              style={{ backgroundColor: '#4285F4' }}
+              className="text-white px-8 py-3 rounded-lg font-medium hover:opacity-90 disabled:opacity-50 shadow-md transition transform hover:-translate-y-0.5"
             >
               {loading ? 'Saving...' : 'Save Changes'}
             </button>
             <button
               type="button"
               onClick={handleRegenerateWebhook}
-              className="bg-amber-600 text-white px-6 py-2.5 rounded-lg hover:bg-amber-700"
+              style={{ backgroundColor: '#FBBC05', color: '#1f2937' }}
+              className="px-6 py-3 rounded-lg font-medium hover:opacity-90 shadow-md transition transform hover:-translate-y-0.5"
             >
               Regenerate Webhook
             </button>
@@ -350,32 +360,27 @@ export default function EditClientForm({ client }: { client: Client }) {
         </form>
 
         {/* Password Reset Section */}
-        <div className="bg-white rounded-xl shadow-sm p-6 border border-blue-200">
-          <h3 className="text-lg font-semibold text-blue-700 mb-2 flex items-center gap-2">
-            <span className="w-1 h-6 bg-blue-600 rounded-full"></span>
-            Client Access Code Reset
-          </h3>
+        <div className="bg-white rounded-xl shadow-sm p-6 border-l-4 border-l-[#4285F4]">
+          <h3 className="text-lg font-semibold text-gray-800 mb-2">Client Access Code Reset</h3>
           <p className="text-sm text-gray-500 mb-4">
             Change the client's access code. The client will use this new code to log in.
           </p>
-          <div className="space-y-3">
+          <div className="space-y-3 max-w-md">
             <div>
-              <label className="block text-sm font-medium text-gray-700">New Access Code</label>
               <input
                 type="text"
                 value={resetPassword.newCode}
                 onChange={(e) => setResetPassword({ ...resetPassword, newCode: e.target.value, message: '', error: '' })}
-                className="mt-1 w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500"
+                className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-[#4285F4] outline-none"
                 placeholder="Enter new access code (min 4 chars)"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700">Confirm New Code</label>
               <input
                 type="text"
                 value={resetPassword.confirmCode}
                 onChange={(e) => setResetPassword({ ...resetPassword, confirmCode: e.target.value, message: '', error: '' })}
-                className="mt-1 w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500"
+                className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-[#4285F4] outline-none"
                 placeholder="Re-enter the new access code"
               />
             </div>
@@ -392,7 +397,8 @@ export default function EditClientForm({ client }: { client: Client }) {
             <button
               type="button"
               onClick={handleResetPassword}
-              className="bg-blue-600 text-white px-6 py-2.5 rounded-lg hover:bg-blue-700 shadow-sm"
+              style={{ backgroundColor: '#4285F4' }}
+              className="text-white px-6 py-2.5 rounded-lg font-medium hover:opacity-90 shadow-sm transition"
             >
               Reset Access Code
             </button>
@@ -400,16 +406,14 @@ export default function EditClientForm({ client }: { client: Client }) {
         </div>
 
         {/* Danger Zone */}
-        <div className="bg-white rounded-xl shadow-sm p-6 border border-red-200">
-          <h3 className="text-lg font-semibold text-red-600 mb-2 flex items-center gap-2">
-            <span className="w-1 h-6 bg-red-600 rounded-full"></span>
-            Danger Zone
-          </h3>
+        <div className="bg-white rounded-xl shadow-sm p-6 border-l-4 border-l-[#EA4335]">
+          <h3 className="text-lg font-semibold text-gray-800 mb-2">Danger Zone</h3>
           <p className="text-sm text-gray-500 mb-4">Deleting this client will permanently remove all data, call logs, and settings.</p>
           <button
             onClick={handleDelete}
             disabled={loading}
-            className="bg-red-600 text-white px-6 py-2.5 rounded-lg hover:bg-red-700 disabled:opacity-50 shadow-sm"
+            style={{ backgroundColor: '#EA4335' }}
+            className="text-white px-6 py-2.5 rounded-lg font-medium hover:opacity-90 disabled:opacity-50 shadow-sm transition"
           >
             Delete Client
           </button>
@@ -418,30 +422,46 @@ export default function EditClientForm({ client }: { client: Client }) {
 
       {/* Sidebar */}
       <div className="lg:col-span-1 space-y-6">
-        <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
-          <h4 className="font-medium text-gray-700 mb-4 text-center">📱 QR Card Preview</h4>
-          <div className="border rounded-lg p-4 bg-gray-50">
-            <QRDisplay client={form} />
-          </div>
-          <p className="text-xs text-gray-400 mt-3 text-center">
-            Preview updates live as you edit fields.
-          </p>
-        </div>
-
-        <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
-          <WebhookUrlDisplay webhookUrl={form.webhook_url} />
-        </div>
-
-        <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
-          <h4 className="font-medium text-gray-700 mb-2">Quick Links</h4>
-          <a
-            href={`/live/${form.slug}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-block text-indigo-600 hover:text-indigo-800 font-medium"
+        <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100 sticky top-6">
+          <h4 className="font-semibold text-gray-800 mb-4 flex items-center justify-center gap-2 text-lg">
+            📱 QR Card Preview
+          </h4>
+          
+          {/* Responsive Scaled Wrapper with Google Tint Background */}
+          <div 
+            className="w-full rounded-2xl border flex justify-center overflow-hidden"
+            style={{ 
+              background: 'linear-gradient(135deg, rgba(66,133,244,0.03) 0%, rgba(234,67,53,0.03) 33%, rgba(251,188,5,0.03) 66%, rgba(52,168,83,0.03) 100%)',
+              borderColor: 'rgba(66,133,244,0.1)',
+              height: '520px', // Fixed container height to crop the scaled element bounds
+              paddingTop: '24px'
+            }}
           >
-            Open Client Dashboard →
-          </a>
+            {/* CSS Transform scale to responsively fit the 400px card into the sidebar without horizontal scrolling */}
+            <div className="origin-top" style={{ transform: 'scale(0.72)', width: '400px' }}>
+              <QRDisplay client={form} />
+            </div>
+          </div>
+          
+          <p className="text-xs text-gray-400 mt-4 text-center">
+            Preview updates live as you edit fields. Downloads are always full resolution.
+          </p>
+
+          <div className="mt-6">
+            <WebhookUrlDisplay webhookUrl={form.webhook_url} />
+          </div>
+
+          <div className="mt-6 pt-6 border-t border-gray-100 text-center">
+            <a
+              href={`/live/${form.slug}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{ color: '#4285F4' }}
+              className="inline-block font-medium hover:opacity-80 transition"
+            >
+              Open Client Dashboard →
+            </a>
+          </div>
         </div>
       </div>
     </div>
