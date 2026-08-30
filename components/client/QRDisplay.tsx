@@ -43,7 +43,7 @@ export default function QRDisplay({ client }: { client: Client }) {
         logging: false,
         allowTaint: false,
         width: 400,
-        height: 520,
+        height: 540, // slightly taller to ensure spacing
       });
       const link = document.createElement('a');
       link.download = `qr_card_${client.slug}.png`;
@@ -55,6 +55,11 @@ export default function QRDisplay({ client }: { client: Client }) {
     }
   };
 
+  // Ensure the title is not "Review u on Google"
+  const title = client.qr_title && client.qr_title !== 'Review u on Google' 
+    ? client.qr_title 
+    : 'Review us on Google';
+
   return (
     <div className="flex flex-col items-center">
       <div
@@ -63,7 +68,7 @@ export default function QRDisplay({ client }: { client: Client }) {
         style={{
           boxShadow: '0 20px 60px -15px rgba(0,0,0,0.2)',
           width: '400px',
-          height: '520px',
+          height: '540px', // increased height
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center',
@@ -71,12 +76,12 @@ export default function QRDisplay({ client }: { client: Client }) {
         }}
       >
         {/* Business name */}
-        <div className="text-center">
+        <div className="text-center" style={{ marginBottom: '8px' }}>
           <h3 className="text-2xl font-bold text-gray-800 tracking-tight">{client.business_name}</h3>
         </div>
 
         {/* QR Code */}
-        <div className="flex justify-center">
+        <div className="flex justify-center" style={{ marginBottom: '12px' }}>
           {loading ? (
             <div className="w-48 h-48 bg-gray-100 rounded-xl flex items-center justify-center text-gray-400 border-2 border-dashed border-gray-300">
               Generating QR…
@@ -95,7 +100,7 @@ export default function QRDisplay({ client }: { client: Client }) {
           )}
         </div>
 
-        {/* Google branding – logo centered, text centered, with proper spacing */}
+        {/* Google branding */}
         <div className="text-center">
           <div className="flex justify-center">
             <svg className="w-8 h-8" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -112,11 +117,11 @@ export default function QRDisplay({ client }: { client: Client }) {
             <span>&#9733;</span><span>&#9733;</span><span>&#9733;</span><span>&#9733;</span><span>&#9733;</span>
           </div>
 
-          {/* Bottom text with proper spacing */}
-          <div className="mt-2 space-y-1">
-            <p className="text-sm text-gray-600 font-medium">{client.qr_title || 'Review us on Google'}</p>
-            <p className="text-xs text-gray-400">{client.qr_subtitle || 'Your feedback helps us improve and grow.'}</p>
-            <p className="text-xs text-gray-400 italic mt-1">{client.qr_tagline || 'Good days start with coffee 😊'}</p>
+          {/* Bottom text – with explicit margins */}
+          <div className="mt-3">
+            <p className="text-sm text-gray-600 font-medium" style={{ marginBottom: '4px' }}>{title}</p>
+            <p className="text-xs text-gray-400" style={{ marginBottom: '4px' }}>{client.qr_subtitle || 'Your feedback helps us improve and grow.'}</p>
+            <p className="text-xs text-gray-400 italic" style={{ marginTop: '4px' }}>{client.qr_tagline || 'Good days start with coffee 😊'}</p>
           </div>
         </div>
       </div>
