@@ -39,8 +39,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Client not found' }, { status: 404 });
     }
 
-    // Verify signature securely using client's webhook_secret (or fallback to environment secret)
-    const secretToUse = client.webhook_secret || process.sw.env?.VAPI_WEBHOOK_SECRET || '';
+   // Verify signature securely using client's webhook_secret (or fallback to environment secret)
+    const secretToUse = client.webhook_secret || process.env.VAPI_WEBHOOK_SECRET || '';
     if (secretToUse) {
       const isValid = verifyVapiSignature(body, signature, secretToUse);
       if (!isValid) {
