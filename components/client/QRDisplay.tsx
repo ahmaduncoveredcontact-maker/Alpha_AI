@@ -43,7 +43,7 @@ export default function QRDisplay({ client }: { client: Client }) {
         logging: false,
         allowTaint: false,
         width: 400,
-        height: 580,
+        height: 640, // Increased to match the new container height
       });
       const link = document.createElement('a');
       link.download = `qr_card_${client.slug}.png`;
@@ -61,8 +61,8 @@ export default function QRDisplay({ client }: { client: Client }) {
         ref={cardRef}
         style={{
           width: '400px',
-          height: '580px',
-          padding: '40px 32px 32px 32px',
+          height: '640px', // Increased height to prevent text cut-off
+          padding: '48px 32px', // Increased top and bottom padding for more breathing room
           boxSizing: 'border-box',
           backgroundColor: '#ffffff',
           borderRadius: '16px',
@@ -77,8 +77,8 @@ export default function QRDisplay({ client }: { client: Client }) {
       >
         {/* Top Section: Google Branding & Call to Action */}
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%' }}>
-          {/* Large Google G */}
-          <svg width="84" height="84" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ marginBottom: '16px' }}>
+          {/* Larger Google G */}
+          <svg width="104" height="104" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ marginBottom: '16px' }}>
             <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4"/>
             <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
             <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
@@ -96,13 +96,13 @@ export default function QRDisplay({ client }: { client: Client }) {
           </div>
 
           {/* Golden Stars */}
-          <div style={{ display: 'flex', justifyContent: 'center', fontSize: '38px', color: '#FBBC05', marginTop: '4px', letterSpacing: '2px' }}>
+          <div style={{ display: 'flex', justifyContent: 'center', fontSize: '38px', color: '#FBBC05', marginTop: '6px', letterSpacing: '2px' }}>
             <span>&#9733;</span><span>&#9733;</span><span>&#9733;</span><span>&#9733;</span><span>&#9733;</span>
           </div>
         </div>
 
         {/* Middle Section: Large QR Code */}
-        <div style={{ display: 'flex', justifyContent: 'center', width: '100%', margin: '12px 0' }}>
+        <div style={{ display: 'flex', justifyContent: 'center', width: '100%', margin: '16px 0' }}>
           {loading ? (
             <div style={{ width: '260px', height: '260px', backgroundColor: '#f9fafb', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#9ca3af', border: '2px dashed #e5e7eb' }}>
               Generating QR…
