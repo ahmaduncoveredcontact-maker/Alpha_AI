@@ -1,7 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import QRCode from 'qrcode';
+import html2canvas from 'html2canvas';
 
 interface Client {
   business_name: string;
@@ -15,6 +16,7 @@ interface Client {
 export default function QRDisplay({ client }: { client: Client }) {
   const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const cardRef = useRef<HTMLDivElement>(null);
 
   const targetUrl = client.google_review_link || `${process.env.NEXT_PUBLIC_BASE_URL}/r/${client.slug}`;
 
@@ -31,21 +33,31 @@ export default function QRDisplay({ client }: { client: Client }) {
       });
   }, [targetUrl]);
 
-  const downloadQR = async (size: number, filename: string) => {
+  const downloadCard = async () => {
+    if (!cardRef.current) return;
     try {
-      const dataUrl = await QRCode.toDataURL(targetUrl, { width: size, margin: 2, color: { dark: '#000000', light: '#ffffff' } });
+      const canvas = await html2canvas(cardRef.current, {
+        scale: 2, // high resolution
+        useCORS: true,
+        backgroundColor: '#ffffff',
+      });
       const link = document.createElement('a');
-      link.href = dataUrl;
-      link.download = filename;
+      link.download = `qr_card_${client.slug}.png`;
+      link.href = canvas.toDataURL('image/png');
       link.click();
     } catch (err) {
-      alert('Failed to generate QR for download.');
+      alert('Failed to download card. Please try again.');
+      console.error(err);
     }
   };
 
   return (
     <div className="flex flex-col items-center">
-      <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-sm w-full border border-gray-100 transition-all hover:shadow-3xl hover:scale-[1.02] duration-300">
+      {/* The card itself – captured for download */}
+      <div
+        ref={cardRef}
+        className="bg-white rounded-2xl shadow-2xl p-8 max-w-sm w-full border border-gray-100"
+      >
         <div className="text-center mb-4">
           <h3 className="text-2xl font-bold text-gray-800 tracking-tight">{client.business_name}</h3>
         </div>
@@ -88,29 +100,19 @@ export default function QRDisplay({ client }: { client: Client }) {
         </div>
       </div>
 
-      <div className="mt-6 flex flex-wrap justify-center gap-3">
-        <button
-          onClick={() => downloadQR(500, 'qr_main.png')}
-          className="bg-black text-white px-5 py-2 rounded-full text-sm font-medium shadow hover:bg-gray-800 transition-all hover:shadow-lg hover:scale-105"
-        >
-          Download Main
-        </button>
-        <button
-          onClick={() => downloadQR(1200, 'qr_wallpaper.png')}
-          className="bg-black text-white px-5 py-2 rounded-full text-sm font-medium shadow hover:bg-gray-800 transition-all hover:shadow-lg hover:scale-105"
-        >
-          Download Wallpaper
-        </button>
-        <button
-          onClick={() => downloadQR(300, 'qr_sticker.png')}
-          className="bg-black text-white px-5 py-2 rounded-full text-sm font-medium shadow hover:bg-gray-800 transition-all hover:shadow-lg hover:scale-105"
-        >
-          Download Sticker
-        </button>
-      </div>
+      {/* Single Download Button */}
+      <button
+        onClick={downloadCard}
+        className="mt-6 bg-gradient-to-r from-indigo-600 to-purple-600 text-white px-8 py-3 rounded-xl font-medium shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-200 flex items-center gap-2"
+      >
+        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+        </svg>
+        Download Card
+      </button>
 
       {client.google_review_link && (
-        <div className="mt-4 text-xs text-gray-400 truncate max-w-xs">
+        <div className="mt-2 text-xs text-gray-400 truncate max-w-xs">
           <span className="font-medium">Review link:</span> {client.google_review_link}
         </div>
       )}
