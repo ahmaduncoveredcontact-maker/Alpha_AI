@@ -95,7 +95,7 @@ export default function QRDisplay({ client }: { client: Client }) {
           )}
         </div>
 
-        {/* Google branding – logo centered alone, text centered below */}
+        {/* Google branding – logo centered, text centered, with proper spacing */}
         <div className="text-center">
           <div className="flex justify-center">
             <svg className="w-8 h-8" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -111,9 +111,13 @@ export default function QRDisplay({ client }: { client: Client }) {
           <div className="flex justify-center space-x-0.5 text-2xl text-yellow-500 mt-1">
             <span>&#9733;</span><span>&#9733;</span><span>&#9733;</span><span>&#9733;</span><span>&#9733;</span>
           </div>
-          <p className="text-sm text-gray-600 font-medium mt-1">{client.qr_title || 'Review us on Google'}</p>
-          <p className="text-xs text-gray-400">{client.qr_subtitle || 'Your feedback helps us improve and grow.'}</p>
-          <p className="text-xs text-gray-400 italic mt-1">{client.qr_tagline || 'Good days start with coffee 😊'}</p>
+
+          {/* Bottom text with proper spacing */}
+          <div className="mt-2 space-y-1">
+            <p className="text-sm text-gray-600 font-medium">{client.qr_title || 'Review us on Google'}</p>
+            <p className="text-xs text-gray-400">{client.qr_subtitle || 'Your feedback helps us improve and grow.'}</p>
+            <p className="text-xs text-gray-400 italic mt-1">{client.qr_tagline || 'Good days start with coffee 😊'}</p>
+          </div>
         </div>
       </div>
 
