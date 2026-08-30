@@ -302,7 +302,7 @@ export default function ClientDashboardClient({
             {/* Close button – prominent & visible */}
             <button
               onClick={() => setIsQRModalOpen(false)}
-              className="absolute -top-3 -right-3 bg-gray-800 hover:bg-gray-700 text-white rounded-full p-2 shadow-lg transition-colors z-10"
+              className="absolute -top-1 -right-1 hover:bg-yellow-700 text-black rounded-full p-2 shadow-lg transition-colors z-10"
               aria-label="Close modal"
             >
               <X className="w-5 h-5" />
