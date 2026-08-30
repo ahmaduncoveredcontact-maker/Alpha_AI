@@ -22,7 +22,7 @@ export default function QRDisplay({ client }: { client: Client }) {
 
   useEffect(() => {
     setLoading(true);
-    QRCode.toDataURL(targetUrl, { width: 200, margin: 2, color: { dark: '#000000', light: '#ffffff' } })
+    QRCode.toDataURL(targetUrl, { width: 224, margin: 2, color: { dark: '#000000', light: '#ffffff' } })
       .then((dataUrl) => {
         setQrDataUrl(dataUrl);
         setLoading(false);
@@ -43,7 +43,7 @@ export default function QRDisplay({ client }: { client: Client }) {
         logging: false,
         allowTaint: false,
         width: 400,
-        height: 560,
+        height: 580, // increased for larger QR
       });
       const link = document.createElement('a');
       link.download = `qr_card_${client.slug}.png`;
@@ -67,8 +67,8 @@ export default function QRDisplay({ client }: { client: Client }) {
         style={{
           boxShadow: '0 20px 60px -15px rgba(0,0,0,0.2)',
           width: '400px',
-          height: '560px',
-          padding: '32px', // equal padding on all sides
+          height: '580px',
+          padding: '32px',
           boxSizing: 'border-box',
           display: 'flex',
           flexDirection: 'column',
@@ -77,14 +77,14 @@ export default function QRDisplay({ client }: { client: Client }) {
         }}
       >
         {/* Business name */}
-        <div className="text-center" style={{ marginBottom: '8px' }}>
+        <div className="text-center" style={{ marginBottom: '4px' }}>
           <h3 className="text-2xl font-bold text-gray-800 tracking-tight">{client.business_name}</h3>
         </div>
 
-        {/* QR Code */}
-        <div className="flex justify-center" style={{ marginBottom: '16px' }}>
+        {/* QR Code – larger size */}
+        <div className="flex justify-center" style={{ marginBottom: '12px' }}>
           {loading ? (
-            <div className="w-48 h-48 bg-gray-100 rounded-xl flex items-center justify-center text-gray-400 border-2 border-dashed border-gray-300">
+            <div className="w-56 h-56 bg-gray-100 rounded-xl flex items-center justify-center text-gray-400 border-2 border-dashed border-gray-300">
               Generating QR…
             </div>
           ) : qrDataUrl ? (
@@ -92,10 +92,10 @@ export default function QRDisplay({ client }: { client: Client }) {
             <img
               src={qrDataUrl}
               alt="QR Code to leave a review"
-              className="w-48 h-48 object-contain border-2 border-gray-200 rounded-xl p-2 bg-white"
+              className="w-56 h-56 object-contain border-2 border-gray-200 rounded-xl p-2 bg-white"
             />
           ) : (
-            <div className="w-48 h-48 bg-gray-100 rounded-xl flex items-center justify-center text-gray-400 border-2 border-dashed border-gray-300">
+            <div className="w-56 h-56 bg-gray-100 rounded-xl flex items-center justify-center text-gray-400 border-2 border-dashed border-gray-300">
               No QR available
             </div>
           )}
@@ -118,14 +118,14 @@ export default function QRDisplay({ client }: { client: Client }) {
             <span>&#9733;</span><span>&#9733;</span><span>&#9733;</span><span>&#9733;</span><span>&#9733;</span>
           </div>
 
-          {/* Bottom text – with word & letter spacing for a professional look */}
           <div className="mt-3" style={{ width: '100%' }}>
             <p 
               className="text-sm text-gray-600 font-medium" 
               style={{ 
                 marginBottom: '8px',
                 wordSpacing: '0.08em',
-                letterSpacing: '0.02em'
+                letterSpacing: '0.02em',
+                textAlign: 'center'
               }}
             >
               {title}
@@ -135,7 +135,8 @@ export default function QRDisplay({ client }: { client: Client }) {
               style={{ 
                 marginBottom: '8px',
                 wordSpacing: '0.06em',
-                letterSpacing: '0.015em'
+                letterSpacing: '0.015em',
+                textAlign: 'center'
               }}
             >
               {client.qr_subtitle || 'Your feedback helps us improve and grow.'}
@@ -145,7 +146,8 @@ export default function QRDisplay({ client }: { client: Client }) {
               style={{ 
                 marginTop: '4px',
                 wordSpacing: '0.06em',
-                letterSpacing: '0.015em'
+                letterSpacing: '0.015em',
+                textAlign: 'center'
               }}
             >
               {client.qr_tagline || 'Good days start with coffee 😊'}
