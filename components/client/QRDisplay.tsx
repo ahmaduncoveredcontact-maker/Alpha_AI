@@ -43,7 +43,7 @@ export default function QRDisplay({ client }: { client: Client }) {
         logging: false,
         allowTaint: false,
         width: 400,
-        height: 560, // increased height
+        height: 560,
       });
       const link = document.createElement('a');
       link.download = `qr_card_${client.slug}.png`;
@@ -55,7 +55,6 @@ export default function QRDisplay({ client }: { client: Client }) {
     }
   };
 
-  // Use the client's title if valid, otherwise fallback to "Review us on Google"
   const title = client.qr_title && client.qr_title !== 'Review u on Google' 
     ? client.qr_title 
     : 'Review us on Google';
@@ -64,11 +63,13 @@ export default function QRDisplay({ client }: { client: Client }) {
     <div className="flex flex-col items-center">
       <div
         ref={cardRef}
-        className="bg-white rounded-2xl p-8 max-w-sm w-full"
+        className="bg-white rounded-2xl max-w-sm w-full"
         style={{
           boxShadow: '0 20px 60px -15px rgba(0,0,0,0.2)',
           width: '400px',
           height: '560px',
+          padding: '32px', // equal padding on all sides
+          boxSizing: 'border-box',
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center',
@@ -101,7 +102,7 @@ export default function QRDisplay({ client }: { client: Client }) {
         </div>
 
         {/* Google branding */}
-        <div className="text-center">
+        <div className="text-center" style={{ width: '100%' }}>
           <div className="flex justify-center">
             <svg className="w-8 h-8" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
               <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4"/>
@@ -117,11 +118,38 @@ export default function QRDisplay({ client }: { client: Client }) {
             <span>&#9733;</span><span>&#9733;</span><span>&#9733;</span><span>&#9733;</span><span>&#9733;</span>
           </div>
 
-          {/* Bottom text – with generous spacing */}
-          <div className="mt-3">
-            <p className="text-sm text-gray-600 font-medium" style={{ marginBottom: '8px' }}>{title}</p>
-            <p className="text-xs text-gray-400" style={{ marginBottom: '8px' }}>{client.qr_subtitle || 'Your feedback helps us improve and grow.'}</p>
-            <p className="text-xs text-gray-400 italic" style={{ marginTop: '4px' }}>{client.qr_tagline || 'Good days start with coffee 😊'}</p>
+          {/* Bottom text – with word & letter spacing for a professional look */}
+          <div className="mt-3" style={{ width: '100%' }}>
+            <p 
+              className="text-sm text-gray-600 font-medium" 
+              style={{ 
+                marginBottom: '8px',
+                wordSpacing: '0.08em',
+                letterSpacing: '0.02em'
+              }}
+            >
+              {title}
+            </p>
+            <p 
+              className="text-xs text-gray-400" 
+              style={{ 
+                marginBottom: '8px',
+                wordSpacing: '0.06em',
+                letterSpacing: '0.015em'
+              }}
+            >
+              {client.qr_subtitle || 'Your feedback helps us improve and grow.'}
+            </p>
+            <p 
+              className="text-xs text-gray-400 italic" 
+              style={{ 
+                marginTop: '4px',
+                wordSpacing: '0.06em',
+                letterSpacing: '0.015em'
+              }}
+            >
+              {client.qr_tagline || 'Good days start with coffee 😊'}
+            </p>
           </div>
         </div>
       </div>
