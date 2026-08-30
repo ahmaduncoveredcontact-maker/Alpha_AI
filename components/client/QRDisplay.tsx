@@ -56,7 +56,7 @@ export default function QRDisplay({ client }: { client: Client }) {
         <div className="flex justify-center mb-6">
           {loading ? (
             <div className="w-48 h-48 bg-gray-100 rounded-xl flex items-center justify-center text-gray-400 border-2 border-dashed border-gray-300">
-              Generating QR…
+              Generating QRâ€¦
             </div>
           ) : qrDataUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
@@ -87,7 +87,7 @@ export default function QRDisplay({ client }: { client: Client }) {
           </div>
           <p className="text-sm text-gray-600 font-medium mt-1">{client.qr_title || 'Review us on Google'}</p>
           <p className="text-xs text-gray-400">{client.qr_subtitle || 'Your feedback helps us improve and grow.'}</p>
-          <p className="text-xs text-gray-400 italic mt-1">{client.qr_tagline || 'Good days start with coffee ❤️'}</p>
+          <p className="text-xs text-gray-400 italic mt-1">{client.qr_tagline || 'Good days start with coffee â¤ï¸'}</p>
         </div>
       </div>
 
