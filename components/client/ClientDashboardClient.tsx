@@ -289,24 +289,33 @@ export default function ClientDashboardClient({
         </footer>
       </main>
 
-      {/* QR Modal */}
-      {isQRModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fadeIn">
-          <div className="bg-white rounded-3xl shadow-2xl max-w-md w-full p-6 relative border border-white/20 animate-scaleUp">
-            <button
-              onClick={() => setIsQRModalOpen(false)}
-              className="absolute top-4 right-4 text-gray-400 hover:text-gray-700 transition-colors"
-              aria-label="Close modal"
-            >
-              <X className="w-6 h-6" />
-            </button>
-            <QRDisplay client={client} />
-            <div className="mt-4 text-center text-xs text-gray-400">
-              Scan or download your QR code
-            </div>
-          </div>
-        </div>
-      )}
+     {/* QR Modal */}
+{isQRModalOpen && (
+  <div
+    className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fadeIn"
+    onClick={(e) => {
+      // Close if the backdrop itself is clicked (not the modal card)
+      if (e.target === e.currentTarget) setIsQRModalOpen(false);
+    }}
+  >
+    <div
+      className="bg-white rounded-3xl shadow-2xl max-w-md w-full p-6 relative border border-white/20 animate-scaleUp"
+      onClick={(e) => e.stopPropagation()} // prevent closing when clicking inside
+    >
+      <button
+        onClick={() => setIsQRModalOpen(false)}
+        className="absolute -top-3 -right-3 bg-gray-800 text-white rounded-full p-1.5 shadow-lg hover:bg-gray-700 transition-colors z-10"
+        aria-label="Close modal"
+      >
+        <X className="w-5 h-5" />
+      </button>
+      <QRDisplay client={client} />
+      <div className="mt-4 text-center text-xs text-gray-400">
+        Scan or download your QR code
+      </div>
+    </div>
+  </div>
+)}
 
       <style jsx>{`
         @keyframes fadeIn {

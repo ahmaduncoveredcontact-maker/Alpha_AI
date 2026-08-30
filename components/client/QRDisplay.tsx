@@ -37,9 +37,12 @@ export default function QRDisplay({ client }: { client: Client }) {
     if (!cardRef.current) return;
     try {
       const canvas = await html2canvas(cardRef.current, {
-        scale: 2, // high resolution
+        scale: 2,
         useCORS: true,
         backgroundColor: '#ffffff',
+        logging: false,
+        allowTaint: false,
+        // Remove any extra shadow by capturing only the element
       });
       const link = document.createElement('a');
       link.download = `qr_card_${client.slug}.png`;
@@ -53,10 +56,11 @@ export default function QRDisplay({ client }: { client: Client }) {
 
   return (
     <div className="flex flex-col items-center">
-      {/* The card itself – captured for download */}
+      {/* The card itself – exactly as shown */}
       <div
         ref={cardRef}
-        className="bg-white rounded-2xl shadow-2xl p-8 max-w-sm w-full border border-gray-100"
+        className="bg-white rounded-2xl p-8 max-w-sm w-full"
+        style={{ boxShadow: '0 20px 60px -15px rgba(0,0,0,0.2)' }}
       >
         <div className="text-center mb-4">
           <h3 className="text-2xl font-bold text-gray-800 tracking-tight">{client.business_name}</h3>
@@ -72,7 +76,7 @@ export default function QRDisplay({ client }: { client: Client }) {
             <img
               src={qrDataUrl}
               alt="QR Code to leave a review"
-              className="w-48 h-48 object-contain border-2 border-gray-200 rounded-xl p-2 bg-white shadow-inner"
+              className="w-48 h-48 object-contain border-2 border-gray-200 rounded-xl p-2 bg-white"
             />
           ) : (
             <div className="w-48 h-48 bg-gray-100 rounded-xl flex items-center justify-center text-gray-400 border-2 border-dashed border-gray-300">
