@@ -34,6 +34,12 @@ export default function EditClientForm({ client }: { client: Client }) {
   const [form, setForm] = useState(client);
   const [loading, setLoading] = useState(false);
   const [syncing, setSyncing] = useState(false);
+  const [resetPassword, setResetPassword] = useState({
+    newCode: '',
+    confirmCode: '',
+    message: '',
+    error: '',
+  });
 
   const handleToggle = (key: keyof Client) => {
     setForm({ ...form, [key]: !form[key] });
@@ -102,6 +108,37 @@ export default function EditClientForm({ client }: { client: Client }) {
     }
   };
 
+  // Password reset handler
+  const handleResetPassword = async () => {
+    setResetPassword({ ...resetPassword, message: '', error: '' });
+    if (resetPassword.newCode.length < 4) {
+      setResetPassword({ ...resetPassword, error: 'New code must be at least 4 characters.' });
+      return;
+    }
+    if (resetPassword.newCode !== resetPassword.confirmCode) {
+      setResetPassword({ ...resetPassword, error: 'Codes do not match.' });
+      return;
+    }
+
+    const res = await fetch(`/api/admin/clients/${client.slug}/reset-password`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ newAccessCode: resetPassword.newCode }),
+    });
+    const data = await res.json();
+    if (res.ok) {
+      setResetPassword({
+        newCode: '',
+        confirmCode: '',
+        message: data.message || 'Password reset successfully!',
+        error: '',
+      });
+      // Optionally refresh to show updated data (but access_code_hash is hidden)
+    } else {
+      setResetPassword({ ...resetPassword, error: data.error || 'Reset failed.' });
+    }
+  };
+
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
       <div className="lg:col-span-2 space-y-6">
@@ -167,7 +204,7 @@ export default function EditClientForm({ client }: { client: Client }) {
             </div>
           </div>
 
-          {/* Calendar & Review Links */}
+          {/* Links */}
           <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
             <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
               <span className="w-1 h-6 bg-gray-800 rounded-full"></span>
@@ -293,6 +330,7 @@ export default function EditClientForm({ client }: { client: Client }) {
             </div>
           </div>
 
+          {/* Save Actions */}
           <div className="flex flex-wrap gap-4 pt-2">
             <button
               type="submit"
@@ -311,6 +349,56 @@ export default function EditClientForm({ client }: { client: Client }) {
           </div>
         </form>
 
+        {/* Password Reset Section */}
+        <div className="bg-white rounded-xl shadow-sm p-6 border border-blue-200">
+          <h3 className="text-lg font-semibold text-blue-700 mb-2 flex items-center gap-2">
+            <span className="w-1 h-6 bg-blue-600 rounded-full"></span>
+            Client Access Code Reset
+          </h3>
+          <p className="text-sm text-gray-500 mb-4">
+            Change the client's access code. The client will use this new code to log in.
+          </p>
+          <div className="space-y-3">
+            <div>
+              <label className="block text-sm font-medium text-gray-700">New Access Code</label>
+              <input
+                type="text"
+                value={resetPassword.newCode}
+                onChange={(e) => setResetPassword({ ...resetPassword, newCode: e.target.value, message: '', error: '' })}
+                className="mt-1 w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500"
+                placeholder="Enter new access code (min 4 chars)"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Confirm New Code</label>
+              <input
+                type="text"
+                value={resetPassword.confirmCode}
+                onChange={(e) => setResetPassword({ ...resetPassword, confirmCode: e.target.value, message: '', error: '' })}
+                className="mt-1 w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500"
+                placeholder="Re-enter the new access code"
+              />
+            </div>
+            {resetPassword.error && (
+              <div className="bg-red-50 border border-red-200 text-red-600 text-sm px-4 py-2 rounded-lg">
+                {resetPassword.error}
+              </div>
+            )}
+            {resetPassword.message && (
+              <div className="bg-green-50 border border-green-200 text-green-700 text-sm px-4 py-2 rounded-lg">
+                {resetPassword.message}
+              </div>
+            )}
+            <button
+              type="button"
+              onClick={handleResetPassword}
+              className="bg-blue-600 text-white px-6 py-2.5 rounded-lg hover:bg-blue-700 shadow-sm"
+            >
+              Reset Access Code
+            </button>
+          </div>
+        </div>
+
         {/* Danger Zone */}
         <div className="bg-white rounded-xl shadow-sm p-6 border border-red-200">
           <h3 className="text-lg font-semibold text-red-600 mb-2 flex items-center gap-2">
@@ -328,6 +416,7 @@ export default function EditClientForm({ client }: { client: Client }) {
         </div>
       </div>
 
+      {/* Sidebar */}
       <div className="lg:col-span-1 space-y-6">
         <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
           <h4 className="font-medium text-gray-700 mb-4 text-center">📱 QR Card Preview</h4>
