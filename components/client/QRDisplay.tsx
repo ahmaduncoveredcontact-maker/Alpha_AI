@@ -1,10 +1,10 @@
-import Image from 'next/image';
+'use client';
+
+import { useState, useEffect } from 'react';
+import QRCode from 'qrcode';
 
 interface Client {
   business_name: string;
-  qr_main_url?: string;
-  qr_wallpaper_url?: string;
-  qr_sticker_url?: string;
   google_review_link?: string;
   slug: string;
   qr_title?: string;
@@ -13,6 +13,39 @@ interface Client {
 }
 
 export default function QRDisplay({ client }: { client: Client }) {
+  const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  // Target URL for QR: use google_review_link if available, else redirect URL
+  const targetUrl = client.google_review_link || `${process.env.NEXT_PUBLIC_BASE_URL}/r/${client.slug}`;
+
+  // Generate QR code whenever the target URL changes
+  useEffect(() => {
+    setLoading(true);
+    QRCode.toDataURL(targetUrl, { width: 200, margin: 2, color: { dark: '#000000', light: '#ffffff' } })
+      .then((dataUrl) => {
+        setQrDataUrl(dataUrl);
+        setLoading(false);
+      })
+      .catch(() => {
+        setQrDataUrl(null);
+        setLoading(false);
+      });
+  }, [targetUrl]);
+
+  // Download QR with custom size
+  const downloadQR = async (size: number, filename: string) => {
+    try {
+      const dataUrl = await QRCode.toDataURL(targetUrl, { width: size, margin: 2, color: { dark: '#000000', light: '#ffffff' } });
+      const link = document.createElement('a');
+      link.href = dataUrl;
+      link.download = filename;
+      link.click();
+    } catch (err) {
+      alert('Failed to generate QR for download.');
+    }
+  };
+
   return (
     <div className="flex flex-col items-center">
       <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-sm w-full border border-gray-100 transition-all hover:shadow-3xl hover:scale-[1.02] duration-300">
@@ -21,16 +54,20 @@ export default function QRDisplay({ client }: { client: Client }) {
         </div>
 
         <div className="flex justify-center mb-6">
-          {client.qr_main_url ? (
+          {loading ? (
+            <div className="w-48 h-48 bg-gray-100 rounded-xl flex items-center justify-center text-gray-400 border-2 border-dashed border-gray-300">
+              Generating QR…
+            </div>
+          ) : qrDataUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
-              src={client.qr_main_url}
+              src={qrDataUrl}
               alt="QR Code to leave a review"
               className="w-48 h-48 object-contain border-2 border-gray-200 rounded-xl p-2 bg-white shadow-inner"
             />
           ) : (
             <div className="w-48 h-48 bg-gray-100 rounded-xl flex items-center justify-center text-gray-400 border-2 border-dashed border-gray-300">
-              <span>No QR yet</span>
+              No QR available
             </div>
           )}
         </div>
@@ -54,34 +91,26 @@ export default function QRDisplay({ client }: { client: Client }) {
         </div>
       </div>
 
+      {/* Download Buttons */}
       <div className="mt-6 flex flex-wrap justify-center gap-3">
-        {client.qr_main_url && (
-          <a
-            href={client.qr_main_url}
-            download
-            className="bg-black text-white px-5 py-2 rounded-full text-sm font-medium shadow hover:bg-gray-800 transition-all hover:shadow-lg hover:scale-105"
-          >
-            Download Main
-          </a>
-        )}
-        {client.qr_wallpaper_url && (
-          <a
-            href={client.qr_wallpaper_url}
-            download
-            className="bg-black text-white px-5 py-2 rounded-full text-sm font-medium shadow hover:bg-gray-800 transition-all hover:shadow-lg hover:scale-105"
-          >
-            Download Wallpaper
-          </a>
-        )}
-        {client.qr_sticker_url && (
-          <a
-            href={client.qr_sticker_url}
-            download
-            className="bg-black text-white px-5 py-2 rounded-full text-sm font-medium shadow hover:bg-gray-800 transition-all hover:shadow-lg hover:scale-105"
-          >
-            Download Sticker
-          </a>
-        )}
+        <button
+          onClick={() => downloadQR(500, 'qr_main.png')}
+          className="bg-black text-white px-5 py-2 rounded-full text-sm font-medium shadow hover:bg-gray-800 transition-all hover:shadow-lg hover:scale-105"
+        >
+          Download Main
+        </button>
+        <button
+          onClick={() => downloadQR(1200, 'qr_wallpaper.png')}
+          className="bg-black text-white px-5 py-2 rounded-full text-sm font-medium shadow hover:bg-gray-800 transition-all hover:shadow-lg hover:scale-105"
+        >
+          Download Wallpaper
+        </button>
+        <button
+          onClick={() => downloadQR(300, 'qr_sticker.png')}
+          className="bg-black text-white px-5 py-2 rounded-full text-sm font-medium shadow hover:bg-gray-800 transition-all hover:shadow-lg hover:scale-105"
+        >
+          Download Sticker
+        </button>
       </div>
 
       {client.google_review_link && (

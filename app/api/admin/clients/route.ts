@@ -104,28 +104,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: `DB insert failed: ${error.message}` }, { status: 500 });
     }
 
-    // 3. Generate QR codes
-    
-    let qrUrls;
-    try {
-        // Use Google review link directly if provided, otherwise use redirect URL
-  const qrTargetUrl = body.google_review_link || `${process.env.NEXT_PUBLIC_BASE_URL}/r/${slug}`;
-  const qrBuffers = await generateQRImages(qrTargetUrl);
-      qrUrls = await uploadQRImages(slug, qrBuffers);
-    } catch (error: any) {
-      console.error('QR generation error:', error);
-      qrUrls = { main: '', wallpaper: '', sticker: '' };
-    }
-
-    // Update client with QR URLs
-    await supabaseAdmin
-      .from('clients')
-      .update({
-        qr_main_url: qrUrls.main || null,
-        qr_wallpaper_url: qrUrls.wallpaper || null,
-        qr_sticker_url: qrUrls.sticker || null,
-      })
-      .eq('id', client.id);
+    // 3. QR codes are now generated dynamically on the client side – no static storage needed.
 
     // 4. Create Google Sheet tab
     try {

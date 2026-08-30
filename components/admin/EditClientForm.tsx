@@ -87,7 +87,7 @@ export default function EditClientForm({ client }: { client: Client }) {
   };
 
   const handleDelete = async () => {
-    if (!confirm(`âš ï¸ Are you sure you want to delete "${client.business_name}"? This action cannot be undone.`)) return;
+    if (!confirm(`Ã¢Å¡Â Ã¯Â¸Â Are you sure you want to delete "${client.business_name}"? This action cannot be undone.`)) return;
     if (!confirm(`Final confirmation: Delete "${client.business_name}" and all associated data?`)) return;
     setLoading(true);
     const res = await fetch(`/api/admin/clients/${client.slug}`, {
@@ -104,7 +104,7 @@ export default function EditClientForm({ client }: { client: Client }) {
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-      {/* Main form â€“ 2/3 */}
+      {/* Main form Ã¢â‚¬â€œ 2/3 */}
       <div className="lg:col-span-2 space-y-6">
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Basic Info */}
@@ -223,7 +223,7 @@ export default function EditClientForm({ client }: { client: Client }) {
               <div>
                 <label className="block text-sm font-medium text-gray-700">Tagline (bottom)</label>
                 <input
-                  value={form.qr_tagline || 'Good days start with coffee â¤ï¸'}
+                  value={form.qr_tagline || 'Good days start with coffee Ã¢ÂÂ¤Ã¯Â¸Â'}
                   onChange={(e) => setForm({ ...form, qr_tagline: e.target.value })}
                   className="mt-1 w-full border border-gray-300 rounded-lg px-4 py-2"
                 />
@@ -330,10 +330,10 @@ export default function EditClientForm({ client }: { client: Client }) {
         </div>
       </div>
 
-      {/* Sidebar â€“ 1/3 */}
+      {/* Sidebar Ã¢â‚¬â€œ 1/3 */}
       <div className="lg:col-span-1 space-y-6">
         <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
-          <h4 className="font-medium text-gray-700 mb-4 text-center">ðŸ“± QR Card Preview</h4>
+          <h4 className="font-medium text-gray-700 mb-4 text-center">Ã°Å¸â€œÂ± QR Card Preview</h4>
           <div className="border rounded-lg p-4 bg-gray-50">
             <QRDisplay client={form} />
           </div>
@@ -354,7 +354,7 @@ export default function EditClientForm({ client }: { client: Client }) {
             rel="noopener noreferrer"
             className="inline-block text-indigo-600 hover:text-indigo-800 font-medium"
           >
-            Open Client Dashboard â†’
+            Open Client Dashboard Ã¢â€ â€™
           </a>
         </div>
       </div>
