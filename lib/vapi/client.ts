@@ -6,13 +6,24 @@ const headers = {
   'Content-Type': 'application/json',
 };
 
+// Define the structured data schema for capturing call details
+const STRUCTURED_DATA_SCHEMA = {
+  type: 'object',
+  properties: {
+    customer_name: { type: 'string' },
+    customer_phone: { type: 'string' },
+    appointment_time: { type: 'string' },
+    status: { type: 'string' },
+  },
+};
+
 export const vapi = {
   createAssistant: async (config: { name: string, instructions: string, calendarLink?: string }) => {
     const body: any = {
       name: config.name,
       voice: {
         provider: '11labs',
-        voiceId: '21m00Tcm4TlvDq8ikWAM', // default
+        voiceId: '21m00Tcm4TlvDq8ikWAM',
       },
       firstMessage: `Hello, this is ${config.name} assistant. How can I help?`,
       model: {
@@ -23,8 +34,15 @@ export const vapi = {
         ],
       },
       endCallMessage: 'Thank you for calling. Goodbye.',
+      // Enable structured data extraction
+      analysisPlan: {
+        structuredDataPlan: {
+          enabled: true,
+          schema: STRUCTURED_DATA_SCHEMA,
+        },
+      },
     };
-    // If a calendar link is provided, include it in the instructions
+
     if (config.calendarLink) {
       body.model.messages[0].content += `\n\nThe booking link is: ${config.calendarLink}. You can tell the customer to visit this link to book.`;
     }

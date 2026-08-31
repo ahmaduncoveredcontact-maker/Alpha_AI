@@ -59,7 +59,7 @@ export async function POST(req: NextRequest) {
       console.warn('⚠️ No call ID found – cannot dedupe reliably');
     }
 
-    // 2. Dedupe: Check if this call_id already exists in Supabase
+    // 2. Dedupe: Check if this call_id already exists
     if (callId) {
       const existing = await supabaseAdmin
         .from('call_logs')
@@ -73,21 +73,63 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // 3. Extract call data
-    const callAnalysis = message.analysis || message.call?.analysis || {};
-    const customerDetails = message.customer || message.call?.customer || {};
-    const startedAt = message.startedAt || message.call?.startedAt || new Date().toISOString();
+    // 3. Extract all possible fields from the payload
+    const call = message.call || {};
+    const customer = message.customer || call.customer || {};
+    const analysis = message.analysis || call.analysis || {};
+    const structuredData = analysis.structuredData || {};
+    const startedAt = message.startedAt || call.startedAt || new Date().toISOString();
+
+    // Phone: try structuredData first, then customer.number, then call.phoneNumber
+    const customerPhone =
+      structuredData.customer_phone ||
+      customer.number ||
+      customer.phone ||
+      call.phoneNumber ||
+      message.callerNumber ||
+      '';
+
+    // Name: structuredData first, then customer.name, then callerName
+    const customerName =
+      structuredData.customer_name ||
+      customer.name ||
+      message.callerName ||
+      'Unknown';
+
+    // Booking time: structuredData.appointment_time or bookedTime
+    const bookedTime =
+      structuredData.appointment_time ||
+      structuredData.bookedTime ||
+      analysis.bookedTime ||
+      '';
+
+    // Status: structuredData.status or from analysis
+    const status =
+      structuredData.status ||
+      analysis.status ||
+      analysis.structuredData?.status ||
+      'General Inquiry';
+
+    // Summary: from analysis.summary or fallback
+    const summary = analysis.summary || message.summary || 'Call completed';
+
+    // Recording URL: from message.recordingUrl or stereoRecordingUrl
+    const recordingUrl =
+      message.recordingUrl ||
+      message.stereoRecordingUrl ||
+      call.recordingUrl ||
+      '';
 
     const callData = {
       client_slug: client.slug,
       timestamp: new Date(startedAt).toISOString(),
       call_type: 'inbound',
-      customer_name: customerDetails.name || message.callerName || 'Unknown',
-      customer_phone: customerDetails.number || customerDetails.phone || message.callerNumber || '',
-      summary: callAnalysis.summary || message.summary || 'Call completed',
-      status: callAnalysis.structuredData?.status || 'General Inquiry',
-      booked_time: callAnalysis.structuredData?.bookedTime || '',
-      recording_url: message.recordingUrl || message.stereoRecordingUrl || message.call?.recordingUrl || '',
+      customer_name: customerName,
+      customer_phone: customerPhone,
+      summary: summary,
+      status: status,
+      booked_time: bookedTime,
+      recording_url: recordingUrl,
       call_id: callId || '',
     };
 
@@ -100,7 +142,7 @@ export async function POST(req: NextRequest) {
       console.warn('⚠️ Could not create/verify sheet tab:', tabErr);
     }
 
-    // 5. Append to Google Sheets (with call_id as 10th column)
+    // 5. Append to Google Sheets (10 columns)
     try {
       await appendRow(client.slug, [
         callData.client_slug,
@@ -119,7 +161,7 @@ export async function POST(req: NextRequest) {
       console.error('❌ Google Sheets append failed:', sheetErr);
     }
 
-    // 6. Save to Supabase call_logs (including call_id)
+    // 6. Save to Supabase call_logs
     try {
       const { error: insertError } = await supabaseAdmin
         .from('call_logs')
@@ -133,7 +175,7 @@ export async function POST(req: NextRequest) {
       console.warn('Supabase insert failed:', err);
     }
 
-    // 7. Send email (optional)
+    // 7. Send email summary
     if (client.email) {
       try {
         await email.sendCallSummary(client.email, client.business_name, callData);
