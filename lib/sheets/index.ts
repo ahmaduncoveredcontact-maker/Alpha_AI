@@ -10,8 +10,31 @@ const sheets = google.sheets({ version: 'v4', auth });
 const SPREADSHEET_ID = process.env.GOOGLE_SHEETS_SPREADSHEET_ID!;
 const HEADER_ROW = ['client_slug', 'timestamp', 'call_type', 'customer_name', 'customer_phone', 'summary', 'status', 'booked_time', 'recording_url'];
 
+// Helper: check if a sheet tab exists
+async function tabExists(slug: string): Promise<boolean> {
+  try {
+    const response = await sheets.spreadsheets.get({
+      spreadsheetId: SPREADSHEET_ID,
+      fields: 'sheets.properties',
+    });
+    const sheetsList = response.data.sheets || [];
+    return sheetsList.some((s) => s.properties?.title === slug);
+  } catch (err) {
+    console.warn('Could not check tab existence:', err);
+    return false;
+  }
+}
+
+// Create tab if it doesn't exist
 export const createTab = async (slug: string) => {
   try {
+    // Check if already exists
+    const exists = await tabExists(slug);
+    if (exists) {
+      console.log(`Tab "${slug}" already exists.`);
+      return;
+    }
+
     await sheets.spreadsheets.batchUpdate({
       spreadsheetId: SPREADSHEET_ID,
       requestBody: {
@@ -29,16 +52,21 @@ export const createTab = async (slug: string) => {
       valueInputOption: 'RAW',
       requestBody: { values: [HEADER_ROW] },
     });
+    console.log(`✅ Tab "${slug}" created with headers.`);
   } catch (error: any) {
+    // If sheet already exists, ignore
     if (error.message?.includes('already exists')) {
-      // Sheet already exists � fine
+      console.log(`Tab "${slug}" already exists (race condition).`);
       return;
     }
+    console.error(`❌ Failed to create tab "${slug}":`, error.message);
     throw error;
   }
 };
 
 export const appendRow = async (slug: string, row: any[]) => {
+  // Ensure tab exists before appending
+  await createTab(slug);
   await sheets.spreadsheets.values.append({
     spreadsheetId: SPREADSHEET_ID,
     range: `${slug}!A:I`,
@@ -48,22 +76,39 @@ export const appendRow = async (slug: string, row: any[]) => {
 };
 
 export const getRows = async (slug: string) => {
-  const response = await sheets.spreadsheets.values.get({
-    spreadsheetId: SPREADSHEET_ID,
-    range: `${slug}!A:I`,
-  });
-  const rows = response.data.values || [];
-  if (rows.length < 2) return [];
-  // Skip header row
-  return rows.slice(1).map((row: any[]) => ({
-    client_slug: row[0],
-    timestamp: row[1],
-    call_type: row[2],
-    customer_name: row[3],
-    customer_phone: row[4],
-    summary: row[5],
-    status: row[6],
-    booked_time: row[7],
-    recording_url: row[8],
-  }));
+  try {
+    // First check if the tab exists
+    const exists = await tabExists(slug);
+    if (!exists) {
+      console.log(`⚠️ Tab "${slug}" not found – returning empty.`);
+      return [];
+    }
+
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId: SPREADSHEET_ID,
+      range: `${slug}!A:I`,
+    });
+    const rows = response.data.values || [];
+    if (rows.length < 2) return [];
+    // Skip header row
+    return rows.slice(1).map((row: any[]) => ({
+      client_slug: row[0],
+      timestamp: row[1],
+      call_type: row[2],
+      customer_name: row[3],
+      customer_phone: row[4],
+      summary: row[5],
+      status: row[6],
+      booked_time: row[7],
+      recording_url: row[8],
+    }));
+  } catch (error: any) {
+    // If the error is "Unable to parse range", the tab is missing – return empty
+    if (error.message?.includes('Unable to parse range') || error.status === 400) {
+      console.log(`⚠️ Tab "${slug}" missing – returning empty.`);
+      return [];
+    }
+    console.error(`❌ Failed to fetch rows for "${slug}":`, error);
+    throw error;
+  }
 };

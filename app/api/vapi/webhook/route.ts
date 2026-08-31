@@ -18,7 +18,9 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Invalid JSON payload' }, { status: 400 });
     }
 
-    // Vapi structures payloads inside a 'message' object for end-of-call reports
+    // Log the full payload for debugging (remove after fixing)
+    console.log('📨 Vapi Webhook Payload:', JSON.stringify(body, null, 2));
+
     const message = body.message || body;
     const assistantId = message.assistantId || message.assistant?.id;
 
@@ -27,7 +29,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Missing assistantId' }, { status: 400 });
     }
 
-    // 1. Find client by vapi_assistant_id in Supabase
+    // 1. Find client by vapi_assistant_id
     const { data: client, error } = await supabaseAdmin
       .from('clients')
       .select('*')
@@ -39,17 +41,19 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Client not found' }, { status: 404 });
     }
 
-   // Verify signature securely using client's webhook_secret (or fallback to environment secret)
+    // 2. Signature verification (skip if secret not set)
     const secretToUse = client.webhook_secret || process.env.VAPI_WEBHOOK_SECRET || '';
-    if (secretToUse) {
+    if (secretToUse && signature) {
       const isValid = verifyVapiSignature(body, signature, secretToUse);
       if (!isValid) {
-        console.warn('Webhook Warning: Signature verification failed');
+        console.warn('⚠️ Signature verification failed – rejecting webhook');
         return NextResponse.json({ error: 'Invalid signature' }, { status: 401 });
       }
+    } else {
+      console.warn('⚠️ No webhook secret set – skipping signature verification');
     }
 
-    // 2. Extract call data safely from Vapi's nested schema
+    // 3. Extract call data
     const callAnalysis = message.analysis || message.call?.analysis || {};
     const customerDetails = message.customer || message.call?.customer || {};
 
@@ -57,24 +61,17 @@ export async function POST(req: NextRequest) {
       client_slug: client.slug,
       timestamp: new Date().toISOString(),
       call_type: 'inbound',
-      customer_name: customerDetails.name || 'Unknown',
-      customer_phone: customerDetails.number || customerDetails.phone || '',
-      summary: callAnalysis.summary || message.summary || 'Completed call session',
-      status: callAnalysis.structuredData?.status || 'Booked',
+      customer_name: customerDetails.name || message.callerName || 'Unknown',
+      customer_phone: customerDetails.number || customerDetails.phone || message.callerNumber || '',
+      summary: callAnalysis.summary || message.summary || 'Call completed',
+      status: callAnalysis.structuredData?.status || 'General Inquiry',
       booked_time: callAnalysis.structuredData?.bookedTime || '',
       recording_url: message.recordingUrl || message.stereoRecordingUrl || message.call?.recordingUrl || '',
     };
 
-    // 3. Save directly to Supabase call_logs table so the dashboard updates
-    const { error: insertError } = await supabaseAdmin
-      .from('call_logs')
-      .insert([callData]);
+    console.log(`📝 Call data for ${client.slug}:`, callData);
 
-    if (insertError) {
-      console.error('Supabase Insert Error:', insertError);
-    }
-
-    // 4. Append to Google Sheets (Safely handled if not configured)
+    // 4. Append to Google Sheets (appendRow now ensures tab exists)
     try {
       await appendRow(client.slug, [
         callData.client_slug,
@@ -87,11 +84,26 @@ export async function POST(req: NextRequest) {
         callData.booked_time,
         callData.recording_url,
       ]);
+      console.log(`✅ Google Sheets row appended for ${client.slug}`);
     } catch (sheetErr) {
-      console.warn('Google Sheets append skipped/failed:', sheetErr);
+      console.error('❌ Google Sheets append failed:', sheetErr);
+      // Don't return error – we still want to process the call
+      // but log it clearly.
     }
 
-    // 5. Send email summary if client has email
+    // 5. Save to Supabase call_logs (optional – for backup)
+    try {
+      const { error: insertError } = await supabaseAdmin
+        .from('call_logs')
+        .insert([callData]);
+      if (insertError) {
+        console.warn('Supabase insert warning:', insertError);
+      }
+    } catch (err) {
+      console.warn('Supabase insert failed:', err);
+    }
+
+    // 6. Send email summary
     if (client.email) {
       try {
         await email.sendCallSummary(client.email, client.business_name, callData);

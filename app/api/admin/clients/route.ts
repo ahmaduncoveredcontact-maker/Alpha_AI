@@ -2,8 +2,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { generateSlug, generateAccessCode, generateWebhookSecret } from '@/lib/utils/helpers';
 import { vapi } from '@/lib/vapi/client';
-import { generateQRImages } from '@/lib/qr/generate';
-import { uploadQRImages } from '@/lib/supabase/storage';
 import { createTab } from '@/lib/sheets';
 import { email } from '@/lib/email/resend';
 import bcrypt from 'bcryptjs';
@@ -45,7 +43,6 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
 
-    // Required fields
     if (!body.business_name || !body.voice_instructions) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
@@ -71,7 +68,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: `Vapi assistant creation failed: ${error.message || 'Unknown error'}` }, { status: 500 });
     }
 
-    // 2. Insert client record (without QR URLs yet)
+    // 2. Insert client record
     const { data: client, error } = await supabaseAdmin
       .from('clients')
       .insert({
@@ -104,16 +101,15 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: `DB insert failed: ${error.message}` }, { status: 500 });
     }
 
-    // 3. QR codes are now generated dynamically on the client side â€“ no static storage needed.
-
-    // 4. Create Google Sheet tab
+    // 3. Create Google Sheet tab (if it fails, log but don't fail onboarding)
     try {
       await createTab(slug);
+      console.log(`✅ Sheet tab created for ${slug}`);
     } catch (error: any) {
-      console.error('Sheet creation error:', error);
+      console.error(`⚠️ Sheet creation warning for ${slug}:`, error.message);
     }
 
-    // 5. Send welcome email
+    // 4. Send welcome email
     if (client.email) {
       try {
         await email.sendWelcome(client.email, client.business_name, accessCode);
@@ -122,12 +118,10 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Return full client data and access code (plain)
     return NextResponse.json({
       client,
       accessCode,
       webhookUrl,
-      
     }, { status: 201 });
 
   } catch (error: any) {
