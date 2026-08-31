@@ -11,7 +11,6 @@ export async function POST(req: NextRequest) {
     const rawBody = await req.text();
     const signature = req.headers.get('x-vapi-signature') || '';
 
-    // 1. Parse JSON
     let body;
     try {
       body = JSON.parse(rawBody);
@@ -20,10 +19,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Invalid JSON payload' }, { status: 400 });
     }
 
-    // 2. Log the FULL payload – this will appear in Vercel logs
     console.log('📨 Vapi Webhook Payload:', JSON.stringify(body, null, 2));
 
-    // Vapi may nest inside 'message' or 'call'
     const message = body.message || body;
     const assistantId = message.assistantId || message.assistant?.id;
 
@@ -32,7 +29,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Missing assistantId' }, { status: 400 });
     }
 
-    // 3. Find client by vapi_assistant_id
+    // Find client
     const { data: client, error } = await supabaseAdmin
       .from('clients')
       .select('*')
@@ -44,7 +41,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Client not found' }, { status: 404 });
     }
 
-    // 4. Signature verification (optional)
+    // Signature verification (optional)
     const secretToUse = client.webhook_secret || process.env.VAPI_WEBHOOK_SECRET || '';
     if (secretToUse && signature) {
       const isValid = verifyVapiSignature(body, signature, secretToUse);
@@ -56,14 +53,34 @@ export async function POST(req: NextRequest) {
       console.warn('⚠️ No webhook secret set – skipping signature verification');
     }
 
-    // 5. Extract call data
+    // 1. Extract unique call ID
+    const callId = message.call?.id || message.callId || null;
+    if (!callId) {
+      console.warn('⚠️ No call ID found – cannot dedupe reliably');
+    }
+
+    // 2. Dedupe: Check if this call_id already exists in Supabase
+    if (callId) {
+      const existing = await supabaseAdmin
+        .from('call_logs')
+        .select('id')
+        .eq('call_id', callId)
+        .maybeSingle();
+
+      if (existing.data) {
+        console.warn(`⚠️ Duplicate call detected (call_id: ${callId}) – skipping`);
+        return NextResponse.json({ success: true, deduped: true });
+      }
+    }
+
+    // 3. Extract call data
     const callAnalysis = message.analysis || message.call?.analysis || {};
     const customerDetails = message.customer || message.call?.customer || {};
-    const callTimestamp = message.startedAt || message.call?.startedAt || new Date().toISOString();
+    const startedAt = message.startedAt || message.call?.startedAt || new Date().toISOString();
 
     const callData = {
       client_slug: client.slug,
-      timestamp: new Date(callTimestamp).toISOString(),
+      timestamp: new Date(startedAt).toISOString(),
       call_type: 'inbound',
       customer_name: customerDetails.name || message.callerName || 'Unknown',
       customer_phone: customerDetails.number || customerDetails.phone || message.callerNumber || '',
@@ -71,32 +88,19 @@ export async function POST(req: NextRequest) {
       status: callAnalysis.structuredData?.status || 'General Inquiry',
       booked_time: callAnalysis.structuredData?.bookedTime || '',
       recording_url: message.recordingUrl || message.stereoRecordingUrl || message.call?.recordingUrl || '',
+      call_id: callId || '',
     };
 
     console.log(`📝 Call data for ${client.slug}:`, callData);
 
-    // 6. DEDUPLICATION: Check if this call was already logged (within last 60 seconds)
-    const duplicateCheck = await supabaseAdmin
-      .from('call_logs')
-      .select('id')
-      .eq('client_slug', client.slug)
-      .eq('customer_phone', callData.customer_phone)
-      .gte('timestamp', new Date(Date.now() - 60000).toISOString())
-      .limit(1);
-
-    if (duplicateCheck.data && duplicateCheck.data.length > 0) {
-      console.warn(`⚠️ Duplicate call detected for ${client.slug} – skipping`);
-      return NextResponse.json({ success: true, deduped: true });
-    }
-
-    // 7. Ensure Google Sheet tab exists
+    // 4. Ensure Google Sheet tab exists
     try {
       await createTab(client.slug);
     } catch (tabErr) {
       console.warn('⚠️ Could not create/verify sheet tab:', tabErr);
     }
 
-    // 8. Append to Google Sheets
+    // 5. Append to Google Sheets (with call_id as 10th column)
     try {
       await appendRow(client.slug, [
         callData.client_slug,
@@ -108,14 +112,14 @@ export async function POST(req: NextRequest) {
         callData.status,
         callData.booked_time,
         callData.recording_url,
+        callData.call_id,
       ]);
       console.log(`✅ Google Sheets row appended for ${client.slug}`);
     } catch (sheetErr) {
       console.error('❌ Google Sheets append failed:', sheetErr);
-      // Don't return error – we still want to save to Supabase
     }
 
-    // 9. Save to Supabase call_logs (for dedupe and backup)
+    // 6. Save to Supabase call_logs (including call_id)
     try {
       const { error: insertError } = await supabaseAdmin
         .from('call_logs')
@@ -129,7 +133,7 @@ export async function POST(req: NextRequest) {
       console.warn('Supabase insert failed:', err);
     }
 
-    // 10. Send email summary
+    // 7. Send email (optional)
     if (client.email) {
       try {
         await email.sendCallSummary(client.email, client.business_name, callData);

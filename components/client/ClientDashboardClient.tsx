@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from 'react';
 import QRDisplay from './QRDisplay';
-import { Phone, Calendar, Star, Clock, Download, X, Filter, Copy } from 'lucide-react';
+import { Phone, Calendar, Star, Clock, Download, X, Filter, Copy, ExternalLink } from 'lucide-react';
 
 interface CallLog {
   client_slug: string;
@@ -14,6 +14,7 @@ interface CallLog {
   status: string;
   booked_time?: string;
   recording_url?: string;
+  call_id?: string; // New field
 }
 
 interface Client {
@@ -45,9 +46,26 @@ export default function ClientDashboardClient({
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
 
-  // Filter calls
-  const filteredCalls = useMemo(() => {
+  // Deduplicate calls
+  const dedupedCalls = useMemo(() => {
+    const seen = new Set<string>();
     return calls.filter((call) => {
+      // Use call_id if available, otherwise use timestamp (rounded to minute) + phone
+      let key = call.call_id;
+      if (!key) {
+        const date = new Date(call.timestamp);
+        const rounded = new Date(date.getFullYear(), date.getMonth(), date.getDate(), date.getHours(), date.getMinutes());
+        key = `${rounded.toISOString()}_${call.customer_phone}`;
+      }
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  }, [calls]);
+
+  // Apply filters to deduped calls
+  const filteredCalls = useMemo(() => {
+    return dedupedCalls.filter((call) => {
       const matchType = typeFilter === 'all' || call.call_type === typeFilter;
       const matchStatus = statusFilter === 'all' || call.status === statusFilter;
       const callDate = new Date(call.timestamp).toISOString().split('T')[0];
@@ -55,15 +73,15 @@ export default function ClientDashboardClient({
       const matchTo = !dateTo || callDate <= dateTo;
       return matchType && matchStatus && matchFrom && matchTo;
     });
-  }, [calls, typeFilter, statusFilter, dateFrom, dateTo]);
+  }, [dedupedCalls, typeFilter, statusFilter, dateFrom, dateTo]);
 
-  // CSV Export
+  // CSV Export (include recording URL)
   const exportCSV = () => {
     if (filteredCalls.length === 0) {
       alert('No calls to export with current filters.');
       return;
     }
-    const headers = ['Time', 'Type', 'Customer', 'Phone', 'Summary', 'Status'];
+    const headers = ['Time', 'Type', 'Customer', 'Phone', 'Summary', 'Status', 'Recording URL'];
     const rows = filteredCalls.map((call) => [
       new Date(call.timestamp).toLocaleString(),
       call.call_type,
@@ -71,6 +89,7 @@ export default function ClientDashboardClient({
       call.customer_phone,
       call.summary,
       call.status,
+      call.recording_url || '',
     ]);
     const csvContent = [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
@@ -83,14 +102,13 @@ export default function ClientDashboardClient({
   // Reusable Multi-Color Accent Pill
   const GooglePill = () => (
     <span 
-      className="w-1.5 h-6 rounded-full" 
+      className="w-1.5 h-6 rounded-full inline-block" 
       style={{ background: 'linear-gradient(180deg, #4285F4 0%, #EA4335 33%, #FBBC05 66%, #34A853 100%)' }}
     />
   );
 
   return (
     <div className="min-h-screen bg-gray-50/50">
-      {/* Header with multi-color accent strip */}
       <header className="bg-white shadow-sm relative">
         <div 
           className="absolute top-0 left-0 w-full h-1" 
@@ -269,12 +287,13 @@ export default function ClientDashboardClient({
                   <th className="px-6 py-4 text-left">Customer</th>
                   <th className="px-6 py-4 text-left">Summary</th>
                   <th className="px-6 py-4 text-left">Status</th>
+                  <th className="px-6 py-4 text-left">Recording</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
                 {filteredCalls.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="px-6 py-12 text-center text-gray-400 bg-gray-50/30">
+                    <td colSpan={6} className="px-6 py-12 text-center text-gray-400 bg-gray-50/30">
                       No calls match your current filters.
                     </td>
                   </tr>
@@ -311,6 +330,20 @@ export default function ClientDashboardClient({
                         }`}>
                           {call.status}
                         </span>
+                      </td>
+                      <td className="px-6 py-4">
+                        {call.recording_url ? (
+                          <a
+                            href={call.recording_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1 text-[#4285F4] hover:underline text-xs font-medium"
+                          >
+                            <ExternalLink className="w-3.5 h-3.5" /> Listen
+                          </a>
+                        ) : (
+                          <span className="text-gray-300 text-xs">—</span>
+                        )}
                       </td>
                     </tr>
                   ))
