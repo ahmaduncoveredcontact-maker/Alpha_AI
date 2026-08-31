@@ -29,9 +29,10 @@ export default async function ClientDashboardPage({ params }: { params: { slug: 
     return date >= start && date <= end;
   });
   const totalCalls = weekCalls.length;
-  const bookings = weekCalls.filter((c: any) => c.status === 'Booked').length;
 
-  // Pass data to the client component
+  // ✅ Count bookings based on presence of booked_time (not only status)
+  const bookings = weekCalls.filter((c: any) => c.booked_time && c.booked_time !== '').length;
+
   return (
     <ClientDashboardClient
       client={client}
