@@ -391,30 +391,29 @@ export default function ClientDashboardClient({
         </footer>
       </main>
 
-     {/* QR Modal – smaller window */}
-{isQRModalOpen && (
-  <div
-    className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/40 backdrop-blur-sm animate-fadeIn"
-    onClick={() => setIsQRModalOpen(false)}
-  >
-    <div
-      className="bg-white rounded-2xl shadow-2xl max-w-xs w-full p-4 relative border border-white/20 animate-scaleUp"
-      onClick={(e) => e.stopPropagation()}
-    >
-      <button
-        onClick={() => setIsQRModalOpen(false)}
-        className="absolute -top-2 -right-2 bg-white hover:bg-gray-100 text-gray-600 border border-gray-200 rounded-full p-1.5 shadow-md transition-colors z-10"
-        aria-label="Close modal"
-      >
-        <X className="w-4 h-4" />
-      </button>
-      <QRDisplay client={client} />
-      <div className="mt-2 text-center text-xs font-medium text-gray-400 uppercase tracking-wider">
-        Scan or download your QR code
-      </div>
-    </div>
-  </div>
-)}
+      {isQRModalOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/40 backdrop-blur-sm animate-fadeIn"
+          onClick={() => setIsQRModalOpen(false)}
+        >
+          <div
+            className="bg-white rounded-3xl shadow-2xl max-w-md w-full p-6 relative border border-white/20 animate-scaleUp"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              onClick={() => setIsQRModalOpen(false)}
+              className="absolute -top-3 -right-3 bg-white hover:bg-gray-100 text-gray-600 border border-gray-200 rounded-full p-2 shadow-md transition-colors z-10"
+              aria-label="Close modal"
+            >
+              <X className="w-5 h-5" />
+            </button>
+            <QRDisplay client={client} />
+            <div className="mt-4 text-center text-xs font-medium text-gray-400 uppercase tracking-wider">
+              Scan or download your QR code
+            </div>
+          </div>
+        </div>
+      )}
 
       <style jsx>{`
         @keyframes fadeIn {
