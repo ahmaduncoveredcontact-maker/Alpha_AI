@@ -15,7 +15,7 @@ interface CallLog {
   booked_time?: string;
   recording_url?: string;
   call_id?: string;
-  address?: string; // NEW
+  address?: string;
 }
 
 interface Client {
@@ -29,6 +29,19 @@ interface Client {
   qr_subtitle?: string;
   qr_tagline?: string;
 }
+
+// Color mapping for status badges
+const statusColors: Record<string, string> = {
+  'Booked': 'bg-[#34A853]/10 text-[#34A853]',
+  'Emergency': 'bg-[#EA4335]/20 text-[#EA4335]',
+  'General Inquiry': 'bg-[#4285F4]/10 text-[#4285F4]',
+  'Rate Limited': 'bg-[#EA4335]/10 text-[#EA4335]',
+  'New Patient': 'bg-[#FBBC05]/20 text-[#FBBC05]',
+  'Follow-up': 'bg-[#8B5CF6]/20 text-[#8B5CF6]',
+  'No Answer': 'bg-gray-200 text-gray-600',
+  'Voicemail': 'bg-gray-200 text-gray-600',
+  'default': 'bg-gray-100 text-gray-600',
+};
 
 export default function ClientDashboardClient({
   client,
@@ -47,6 +60,16 @@ export default function ClientDashboardClient({
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
 
+  // Extract unique statuses from calls for the filter dropdown
+  const uniqueStatuses = useMemo(() => {
+    const statusSet = new Set<string>();
+    calls.forEach((call) => {
+      if (call.status) statusSet.add(call.status);
+    });
+    return Array.from(statusSet).sort();
+  }, [calls]);
+
+  // Deduplicate calls
   const dedupedCalls = useMemo(() => {
     const seen = new Set<string>();
     return calls.filter((call) => {
@@ -62,6 +85,7 @@ export default function ClientDashboardClient({
     });
   }, [calls]);
 
+  // Apply filters to deduped calls
   const filteredCalls = useMemo(() => {
     return dedupedCalls.filter((call) => {
       const matchType = typeFilter === 'all' || call.call_type === typeFilter;
@@ -73,7 +97,7 @@ export default function ClientDashboardClient({
     });
   }, [dedupedCalls, typeFilter, statusFilter, dateFrom, dateTo]);
 
-  // CSV Export (include all columns including address)
+  // CSV Export
   const exportCSV = () => {
     if (filteredCalls.length === 0) {
       alert('No calls to export with current filters.');
@@ -219,7 +243,7 @@ export default function ClientDashboardClient({
           </div>
         </div>
 
-        {/* Call Log with All Columns */}
+        {/* Call Log with Filters */}
         <div className="bg-white rounded-2xl shadow-sm overflow-hidden border border-gray-100">
           <div className="px-6 py-5 border-b border-gray-100 flex flex-wrap items-center justify-between gap-4 bg-white">
             <h2 className="text-xl font-semibold text-gray-800 flex items-center gap-2">
@@ -246,10 +270,9 @@ export default function ClientDashboardClient({
                 className="text-sm border border-gray-200 bg-gray-50 rounded-lg px-3 py-2 text-gray-600 focus:ring-2 focus:ring-[#4285F4] outline-none transition"
               >
                 <option value="all">All Status</option>
-                <option value="Booked">Booked</option>
-                <option value="General Inquiry">General Inquiry</option>
-                <option value="No Answer">No Answer</option>
-                <option value="Rate Limited">Rate Limited</option>
+                {uniqueStatuses.map((status) => (
+                  <option key={status} value={status}>{status}</option>
+                ))}
               </select>
 
               <div className="flex items-center gap-2 border border-gray-200 bg-gray-50 rounded-lg px-2">
@@ -299,61 +322,59 @@ export default function ClientDashboardClient({
                     </td>
                   </tr>
                 ) : (
-                  filteredCalls.map((call, idx) => (
-                    <tr key={idx} className="hover:bg-blue-50/30 transition-colors">
-                      <td className="px-6 py-4 whitespace-nowrap text-gray-500 font-medium">
-                        {new Date(call.timestamp).toLocaleString(undefined, { 
-                          month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' 
-                        })}
-                      </td>
-                      <td className="px-6 py-4 capitalize">
-                        <span className={`inline-flex items-center px-2.5 py-1 rounded-md text-xs font-semibold ${
-                          call.call_type === 'inbound' 
-                            ? 'bg-[#4285F4]/10 text-[#4285F4]' 
-                            : 'bg-purple-100 text-purple-700'
-                        }`}>
-                          {call.call_type}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="text-gray-900 font-medium">{call.customer_name}</div>
-                        <div className="text-gray-400 text-xs mt-0.5">{call.customer_phone}</div>
-                      </td>
-                      <td className="px-6 py-4 text-gray-600 max-w-xs truncate" title={call.summary}>
-                        {call.summary}
-                      </td>
-                      <td className="px-6 py-4">
-                        <span className={`inline-flex px-2.5 py-1 rounded-md text-xs font-semibold ${
-                          call.status === 'Booked' ? 'bg-[#34A853]/10 text-[#34A853]' :
-                          call.status === 'Rate Limited' ? 'bg-[#EA4335]/10 text-[#EA4335]' :
-                          call.status === 'General Inquiry' ? 'bg-[#4285F4]/10 text-[#4285F4]' :
-                          'bg-gray-100 text-gray-600'
-                        }`}>
-                          {call.status}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 text-gray-500">
-                        {call.booked_time || '—'}
-                      </td>
-                      <td className="px-6 py-4">
-                        {call.recording_url ? (
-                          <a
-                            href={call.recording_url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1 text-[#4285F4] hover:underline text-xs font-medium"
-                          >
-                            <ExternalLink className="w-3.5 h-3.5" /> Listen
-                          </a>
-                        ) : (
-                          <span className="text-gray-300 text-xs">—</span>
-                        )}
-                      </td>
-                      <td className="px-6 py-4 text-gray-600 max-w-xs truncate" title={call.address}>
-                        {call.address || '—'}
-                      </td>
-                    </tr>
-                  ))
+                  filteredCalls.map((call, idx) => {
+                    const statusColor = statusColors[call.status] || statusColors['default'];
+                    return (
+                      <tr key={idx} className="hover:bg-blue-50/30 transition-colors">
+                        <td className="px-6 py-4 whitespace-nowrap text-gray-500 font-medium">
+                          {new Date(call.timestamp).toLocaleString(undefined, { 
+                            month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' 
+                          })}
+                        </td>
+                        <td className="px-6 py-4 capitalize">
+                          <span className={`inline-flex items-center px-2.5 py-1 rounded-md text-xs font-semibold ${
+                            call.call_type === 'inbound' 
+                              ? 'bg-[#4285F4]/10 text-[#4285F4]' 
+                              : 'bg-purple-100 text-purple-700'
+                          }`}>
+                            {call.call_type}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="text-gray-900 font-medium">{call.customer_name}</div>
+                          <div className="text-gray-400 text-xs mt-0.5">{call.customer_phone}</div>
+                        </td>
+                        <td className="px-6 py-4 text-gray-600 max-w-xs truncate" title={call.summary}>
+                          {call.summary}
+                        </td>
+                        <td className="px-6 py-4">
+                          <span className={`inline-flex px-2.5 py-1 rounded-md text-xs font-semibold ${statusColor}`}>
+                            {call.status}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 text-gray-500">
+                          {call.booked_time || '—'}
+                        </td>
+                        <td className="px-6 py-4">
+                          {call.recording_url ? (
+                            <a
+                              href={call.recording_url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1 text-[#4285F4] hover:underline text-xs font-medium"
+                            >
+                              <ExternalLink className="w-3.5 h-3.5" /> Listen
+                            </a>
+                          ) : (
+                            <span className="text-gray-300 text-xs">—</span>
+                          )}
+                        </td>
+                        <td className="px-6 py-4 text-gray-600 max-w-xs truncate" title={call.address}>
+                          {call.address || '—'}
+                        </td>
+                      </tr>
+                    );
+                  })
                 )}
               </tbody>
             </table>
