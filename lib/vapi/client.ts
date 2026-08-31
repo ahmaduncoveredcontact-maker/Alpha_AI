@@ -14,6 +14,7 @@ const STRUCTURED_DATA_SCHEMA = {
     customer_phone: { type: 'string' },
     appointment_time: { type: 'string' },
     status: { type: 'string' },
+    address: { type: 'string' }, // NEW
   },
 };
 
@@ -34,7 +35,6 @@ export const vapi = {
         ],
       },
       endCallMessage: 'Thank you for calling. Goodbye.',
-      // Enable structured data extraction
       analysisPlan: {
         structuredDataPlan: {
           enabled: true,

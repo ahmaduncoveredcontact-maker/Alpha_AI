@@ -14,7 +14,8 @@ interface CallLog {
   status: string;
   booked_time?: string;
   recording_url?: string;
-  call_id?: string; // New field
+  call_id?: string;
+  address?: string; // NEW
 }
 
 interface Client {
@@ -46,11 +47,9 @@ export default function ClientDashboardClient({
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
 
-  // Deduplicate calls
   const dedupedCalls = useMemo(() => {
     const seen = new Set<string>();
     return calls.filter((call) => {
-      // Use call_id if available, otherwise use timestamp (rounded to minute) + phone
       let key = call.call_id;
       if (!key) {
         const date = new Date(call.timestamp);
@@ -63,7 +62,6 @@ export default function ClientDashboardClient({
     });
   }, [calls]);
 
-  // Apply filters to deduped calls
   const filteredCalls = useMemo(() => {
     return dedupedCalls.filter((call) => {
       const matchType = typeFilter === 'all' || call.call_type === typeFilter;
@@ -75,13 +73,13 @@ export default function ClientDashboardClient({
     });
   }, [dedupedCalls, typeFilter, statusFilter, dateFrom, dateTo]);
 
-  // CSV Export (include recording URL)
+  // CSV Export (include all columns including address)
   const exportCSV = () => {
     if (filteredCalls.length === 0) {
       alert('No calls to export with current filters.');
       return;
     }
-    const headers = ['Time', 'Type', 'Customer', 'Phone', 'Summary', 'Status', 'Recording URL'];
+    const headers = ['Time', 'Type', 'Customer', 'Phone', 'Summary', 'Status', 'Booked Time', 'Recording URL', 'Address'];
     const rows = filteredCalls.map((call) => [
       new Date(call.timestamp).toLocaleString(),
       call.call_type,
@@ -89,7 +87,9 @@ export default function ClientDashboardClient({
       call.customer_phone,
       call.summary,
       call.status,
+      call.booked_time || '',
       call.recording_url || '',
+      call.address || '',
     ]);
     const csvContent = [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
@@ -99,7 +99,6 @@ export default function ClientDashboardClient({
     link.click();
   };
 
-  // Reusable Multi-Color Accent Pill
   const GooglePill = () => (
     <span 
       className="w-1.5 h-6 rounded-full inline-block" 
@@ -130,7 +129,7 @@ export default function ClientDashboardClient({
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* NFC Banner */}
-        <div className="bg-white border-l-4 rounded-xl p-4 mb-8 text-sm text-gray-700 shadow-sm flex items-center justify-between flex-wrap gap-2 transition hover:shadow-md" style={{ borderLeftColor: '#4285F4' }}>
+        <div className="bg-white border-l-4 rounded-xl p-4 mb-8 text-sm text-gray-700 shadow-sm flex items-center justify-between flex-wrap gap-2" style={{ borderLeftColor: '#4285F4' }}>
           <span className="flex items-center gap-2">
             <span className="text-lg">📦</span> 
             <span><strong>NFC card</strong> will be delivered to your provided address:</span>
@@ -220,7 +219,7 @@ export default function ClientDashboardClient({
           </div>
         </div>
 
-        {/* Call Log with Filters */}
+        {/* Call Log with All Columns */}
         <div className="bg-white rounded-2xl shadow-sm overflow-hidden border border-gray-100">
           <div className="px-6 py-5 border-b border-gray-100 flex flex-wrap items-center justify-between gap-4 bg-white">
             <h2 className="text-xl font-semibold text-gray-800 flex items-center gap-2">
@@ -287,13 +286,15 @@ export default function ClientDashboardClient({
                   <th className="px-6 py-4 text-left">Customer</th>
                   <th className="px-6 py-4 text-left">Summary</th>
                   <th className="px-6 py-4 text-left">Status</th>
+                  <th className="px-6 py-4 text-left">Booked Time</th>
                   <th className="px-6 py-4 text-left">Recording</th>
+                  <th className="px-6 py-4 text-left">Address</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
                 {filteredCalls.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="px-6 py-12 text-center text-gray-400 bg-gray-50/30">
+                    <td colSpan={8} className="px-6 py-12 text-center text-gray-400 bg-gray-50/30">
                       No calls match your current filters.
                     </td>
                   </tr>
@@ -331,6 +332,9 @@ export default function ClientDashboardClient({
                           {call.status}
                         </span>
                       </td>
+                      <td className="px-6 py-4 text-gray-500">
+                        {call.booked_time || '—'}
+                      </td>
                       <td className="px-6 py-4">
                         {call.recording_url ? (
                           <a
@@ -345,6 +349,9 @@ export default function ClientDashboardClient({
                           <span className="text-gray-300 text-xs">—</span>
                         )}
                       </td>
+                      <td className="px-6 py-4 text-gray-600 max-w-xs truncate" title={call.address}>
+                        {call.address || '—'}
+                      </td>
                     </tr>
                   ))
                 )}
@@ -353,7 +360,6 @@ export default function ClientDashboardClient({
           </div>
         </div>
 
-        {/* Footer */}
         <footer className="mt-8 flex flex-col sm:flex-row justify-between items-center text-xs text-gray-400 pt-4 gap-2">
           <span>&copy; {new Date().getFullYear()} Alpha AI – Your trusted AI receptionist.</span>
           <span className="flex items-center space-x-1">
@@ -364,7 +370,6 @@ export default function ClientDashboardClient({
         </footer>
       </main>
 
-      {/* QR Modal */}
       {isQRModalOpen && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/40 backdrop-blur-sm animate-fadeIn"

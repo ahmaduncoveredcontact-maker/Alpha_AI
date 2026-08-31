@@ -21,20 +21,17 @@ export async function POST(req: NextRequest) {
 
     const message = body.message || body;
 
-    // 1. STRICT EVENT FILTER: Ignore all mid-call events (transcripts, speech-updates, pings)
-    // Only process the final end-of-call-report when analysis & structured data are ready
+    // Only process end-of-call report
     if (message.type !== 'end-of-call-report') {
       return NextResponse.json({ received: true, ignoredType: message.type || 'non-report' });
     }
 
-    // 2. Identify Assistant ID
     const assistantId = message.assistantId || message.assistant?.id || message.call?.assistantId;
     if (!assistantId) {
       console.error('❌ Missing assistantId in end-of-call report');
       return NextResponse.json({ error: 'Missing assistantId' }, { status: 400 });
     }
 
-    // 3. Find Client in Supabase
     const { data: client, error: clientError } = await supabaseAdmin
       .from('clients')
       .select('*')
@@ -46,7 +43,6 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Client not found' }, { status: 404 });
     }
 
-    // 4. Verify Signature (Safe/Non-blocking if secret is present)
     const secretToUse = client.webhook_secret || process.env.VAPI_WEBHOOK_SECRET || '';
     if (secretToUse && signature) {
       const isValid = verifyVapiSignature(body, signature, secretToUse);
@@ -55,7 +51,6 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // 5. Deduplication Check via call_id
     const callId = message.call?.id || message.callId || body.call?.id || null;
     if (callId) {
       const { data: existing } = await supabaseAdmin
@@ -70,14 +65,12 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // 6. Extract Structured Data & Analysis
     const call = message.call || {};
     const customer = message.customer || call.customer || {};
     const analysis = message.analysis || call.analysis || {};
     const structuredData = analysis.structuredData || message.structuredData || {};
     const startedAt = message.startedAt || call.startedAt || new Date().toISOString();
 
-    // Map exact field names from your Vapi Structured Outputs
     const customerPhone =
       structuredData.customer_phone ||
       customer.number ||
@@ -111,6 +104,12 @@ export async function POST(req: NextRequest) {
       call.recordingUrl ||
       '';
 
+    // NEW: Extract address from structured data
+    const address =
+      structuredData.address ||
+      structuredData.patient_address ||
+      '';
+
     const callData = {
       client_slug: client.slug,
       timestamp: new Date(startedAt).toISOString(),
@@ -122,11 +121,12 @@ export async function POST(req: NextRequest) {
       booked_time: bookedTime,
       recording_url: recordingUrl,
       call_id: callId || '',
+      address: address, // NEW
     };
 
     console.log(`📝 Final Call Data for ${client.slug}:`, callData);
 
-    // 7. Save to Supabase (powers your client dashboard)
+    // Save to Supabase
     try {
       const { error: insertError } = await supabaseAdmin
         .from('call_logs')
@@ -141,7 +141,7 @@ export async function POST(req: NextRequest) {
       console.error('💥 Database exception:', dbErr);
     }
 
-    // 8. Append to Google Sheets (10 columns)
+    // Append to Google Sheets (11 columns)
     try {
       await createTab(client.slug);
       await appendRow(client.slug, [
@@ -155,13 +155,14 @@ export async function POST(req: NextRequest) {
         callData.booked_time,
         callData.recording_url,
         callData.call_id,
+        callData.address, // NEW
       ]);
       console.log(`✅ Google Sheet appended for ${client.slug}`);
     } catch (sheetErr) {
       console.error('⚠️ Google Sheets append failed:', sheetErr);
     }
 
-    // 9. Send Email Summary
+    // Send Email Summary
     if (client.email) {
       try {
         await email.sendCallSummary(client.email, client.business_name, callData);

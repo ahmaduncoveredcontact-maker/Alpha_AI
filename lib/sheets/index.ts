@@ -18,10 +18,10 @@ const HEADER_ROW = [
   'status',
   'booked_time',
   'recording_url',
-  'call_id', // NEW: unique call identifier
+  'call_id',
+  'address', // NEW
 ];
 
-// Helper: check if a sheet tab exists
 async function tabExists(slug: string): Promise<boolean> {
   try {
     const response = await sheets.spreadsheets.get({
@@ -54,10 +54,9 @@ export const createTab = async (slug: string) => {
         }],
       },
     });
-    // Add header row (now with 10 columns)
     await sheets.spreadsheets.values.update({
       spreadsheetId: SPREADSHEET_ID,
-      range: `${slug}!A1:J1`,
+      range: `${slug}!A1:K1`,
       valueInputOption: 'RAW',
       requestBody: { values: [HEADER_ROW] },
     });
@@ -76,7 +75,7 @@ export const appendRow = async (slug: string, row: any[]) => {
   await createTab(slug);
   await sheets.spreadsheets.values.append({
     spreadsheetId: SPREADSHEET_ID,
-    range: `${slug}!A:J`,
+    range: `${slug}!A:K`,
     valueInputOption: 'RAW',
     requestBody: { values: [row] },
   });
@@ -92,11 +91,10 @@ export const getRows = async (slug: string) => {
 
     const response = await sheets.spreadsheets.values.get({
       spreadsheetId: SPREADSHEET_ID,
-      range: `${slug}!A:J`,
+      range: `${slug}!A:K`,
     });
     const rows = response.data.values || [];
     if (rows.length < 2) return [];
-    // Skip header row – map to objects
     return rows.slice(1).map((row: any[]) => ({
       client_slug: row[0],
       timestamp: row[1],
@@ -108,6 +106,7 @@ export const getRows = async (slug: string) => {
       booked_time: row[7],
       recording_url: row[8],
       call_id: row[9] || '',
+      address: row[10] || '',
     }));
   } catch (error: any) {
     if (error.message?.includes('Unable to parse range') || error.status === 400) {
