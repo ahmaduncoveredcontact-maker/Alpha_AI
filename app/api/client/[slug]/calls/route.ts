@@ -23,7 +23,7 @@ export async function GET(
   }
 }
 
-// PUT: update a call log
+// PUT: update a call log (all fields)
 export async function PUT(
   req: NextRequest,
   { params }: { params: { slug: string } }
@@ -34,19 +34,34 @@ export async function PUT(
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const body = await req.json();
-  const { rowNumber, customer_name, customer_phone, summary, status, booked_time, address } = body;
-  if (!rowNumber || !customer_name || !customer_phone || !summary || !status) {
-    return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
-  }
-
   try {
+    const body = await req.json();
+    const {
+      rowNumber,
+      customer_name,
+      customer_phone,
+      summary,
+      status,
+      booked_time,
+      address,
+    } = body;
+
+    // Validate required fields
+    if (!rowNumber || !customer_name || !customer_phone || !summary || !status) {
+      return NextResponse.json(
+        { error: 'Missing required fields: customer_name, customer_phone, summary, status' },
+        { status: 400 }
+      );
+    }
+
+    // Fetch existing row
     const rows = await getRows(params.slug);
     const row = rows.find((r: any) => r._row === rowNumber);
     if (!row) {
       return NextResponse.json({ error: 'Row not found' }, { status: 404 });
     }
 
+    // Build updated row (preserve immutable fields: timestamp, call_type, recording_url, call_id)
     const updatedRow = [
       row.client_slug,
       row.timestamp,
@@ -81,7 +96,8 @@ export async function PUT(
 
     return NextResponse.json({ success: true });
   } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    console.error('PUT error:', error);
+    return NextResponse.json({ error: error.message || 'Update failed' }, { status: 500 });
   }
 }
 
@@ -128,6 +144,7 @@ export async function DELETE(
 
     return NextResponse.json({ success: true });
   } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    console.error('DELETE error:', error);
+    return NextResponse.json({ error: error.message || 'Delete failed' }, { status: 500 });
   }
 }
