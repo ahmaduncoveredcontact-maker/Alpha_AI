@@ -19,7 +19,7 @@ const HEADER_ROW = [
   'booked_time',
   'recording_url',
   'call_id',
-  'address', // NEW
+  'address',
 ];
 
 async function tabExists(slug: string): Promise<boolean> {
@@ -95,19 +95,23 @@ export const getRows = async (slug: string) => {
     });
     const rows = response.data.values || [];
     if (rows.length < 2) return [];
-    return rows.slice(1).map((row: any[]) => ({
-      client_slug: row[0],
-      timestamp: row[1],
-      call_type: row[2],
-      customer_name: row[3],
-      customer_phone: row[4],
-      summary: row[5],
-      status: row[6],
-      booked_time: row[7],
-      recording_url: row[8],
-      call_id: row[9] || '',
-      address: row[10] || '',
-    }));
+    return rows
+      .slice(1)
+      .map((row: any[], idx: number) => ({
+        _row: idx + 2, // 1-indexed, header is row 1, first data row is row 2
+        client_slug: row[0],
+        timestamp: row[1],
+        call_type: row[2],
+        customer_name: row[3],
+        customer_phone: row[4],
+        summary: row[5],
+        status: row[6],
+        booked_time: row[7],
+        recording_url: row[8],
+        call_id: row[9] || '',
+        address: row[10] || '',
+      }))
+      .filter((row) => row.client_slug !== '__DELETED__'); // soft delete filter
   } catch (error: any) {
     if (error.message?.includes('Unable to parse range') || error.status === 400) {
       console.log(`⚠️ Tab "${slug}" missing – returning empty.`);
@@ -116,4 +120,24 @@ export const getRows = async (slug: string) => {
     console.error(`❌ Failed to fetch rows for "${slug}":`, error);
     throw error;
   }
+};
+
+// NEW: Update a specific row
+export const updateRow = async (slug: string, rowNumber: number, data: any[]) => {
+  await sheets.spreadsheets.values.update({
+    spreadsheetId: SPREADSHEET_ID,
+    range: `${slug}!A${rowNumber}:K${rowNumber}`,
+    valueInputOption: 'RAW',
+    requestBody: { values: [data] },
+  });
+};
+
+// NEW: Soft delete a row (mark client_slug as '__DELETED__')
+export const deleteRow = async (slug: string, rowNumber: number) => {
+  await sheets.spreadsheets.values.update({
+    spreadsheetId: SPREADSHEET_ID,
+    range: `${slug}!A${rowNumber}`,
+    valueInputOption: 'RAW',
+    requestBody: { values: [['__DELETED__']] },
+  });
 };
