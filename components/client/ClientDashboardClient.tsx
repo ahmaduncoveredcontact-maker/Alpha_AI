@@ -391,29 +391,38 @@ export default function ClientDashboardClient({
         </footer>
       </main>
 
-      {isQRModalOpen && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/40 backdrop-blur-sm animate-fadeIn"
-          onClick={() => setIsQRModalOpen(false)}
-        >
-          <div
-            className="bg-white rounded-3xl shadow-2xl max-w-md w-full p-6 relative border border-white/20 animate-scaleUp"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <button
-              onClick={() => setIsQRModalOpen(false)}
-              className="absolute -top-3 -right-3 bg-white hover:bg-gray-100 text-gray-600 border border-gray-200 rounded-full p-2 shadow-md transition-colors z-10"
-              aria-label="Close modal"
-            >
-              <X className="w-5 h-5" />
-            </button>
-            <QRDisplay client={client} />
-            <div className="mt-4 text-center text-xs font-medium text-gray-400 uppercase tracking-wider">
-              Scan or download your QR code
-            </div>
-          </div>
-        </div>
-      )}
+   {/* QR Modal */}
+{isQRModalOpen && (
+  <div
+    className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fadeIn"
+    onClick={() => setIsQRModalOpen(false)}
+  >
+    <div
+      className="bg-white rounded-3xl shadow-2xl max-w-md w-full max-h-[90vh] overflow-y-auto p-6 relative border border-white/20 animate-scaleUp"
+      onClick={(e) => e.stopPropagation()}
+    >
+      {/* Close button */}
+      <button
+        onClick={() => setIsQRModalOpen(false)}
+        className="absolute -top-3 -right-3 bg-white hover:bg-gray-100 text-gray-700 rounded-full p-2 shadow-lg transition-colors z-10 border border-gray-200"
+        aria-label="Close modal"
+      >
+        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+        </svg>
+      </button>
+
+      {/* QR Display – now centered inside the modal */}
+      <div className="flex flex-col items-center justify-center">
+        <QRDisplay client={client} />
+      </div>
+
+      <div className="mt-4 text-center text-xs text-gray-400">
+        Scan or download your QR code
+      </div>
+    </div>
+  </div>
+)}
 
       <style jsx>{`
         @keyframes fadeIn {

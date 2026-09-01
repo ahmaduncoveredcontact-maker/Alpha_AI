@@ -22,8 +22,7 @@ export default function QRDisplay({ client }: { client: Client }) {
 
   useEffect(() => {
     setLoading(true);
-    // Setting light to transparent so it blends perfectly with the inner white wrapper
-    QRCode.toDataURL(targetUrl, { width: 220, margin: 1, color: { dark: '#1f2937', light: '#00000000' } })
+    QRCode.toDataURL(targetUrl, { width: 200, margin: 1, color: { dark: '#1f2937', light: '#00000000' } })
       .then((dataUrl) => {
         setQrDataUrl(dataUrl);
         setLoading(false);
@@ -38,13 +37,13 @@ export default function QRDisplay({ client }: { client: Client }) {
     if (!cardRef.current) return;
     try {
       const canvas = await html2canvas(cardRef.current, {
-        scale: 3, 
+        scale: 3,
         useCORS: true,
         backgroundColor: '#ffffff',
         logging: false,
         allowTaint: false,
         width: 400,
-        height: 620, 
+        height: 620,
       });
       const link = document.createElement('a');
       link.download = `qr_card_${client.slug}.png`;
@@ -58,12 +57,13 @@ export default function QRDisplay({ client }: { client: Client }) {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%' }}>
+      {/* Card – responsive for modal, fixed for download */}
       <div
         ref={cardRef}
         style={{
-          width: '400px',
-          height: '620px',
-          padding: '36px 32px',
+          width: '100%',
+          maxWidth: '380px', // fits inside the modal's max-w-md (384px)
+          padding: '28px 20px',
           boxSizing: 'border-box',
           backgroundColor: '#ffffff',
           borderRadius: '16px',
@@ -78,7 +78,7 @@ export default function QRDisplay({ client }: { client: Client }) {
       >
         {/* Top Section: Google Branding & Call to Action */}
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%' }}>
-          <svg width="96" height="96" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ marginBottom: '14px' }}>
+          <svg width="72" height="72" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ marginBottom: '10px' }}>
             <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4"/>
             <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
             <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
@@ -86,36 +86,36 @@ export default function QRDisplay({ client }: { client: Client }) {
           </svg>
 
           <div style={{ textAlign: 'center', lineHeight: '1.1' }}>
-            <div style={{ fontSize: '24px', fontWeight: 500, color: '#374151', marginBottom: '2px' }}>
+            <div style={{ fontSize: '20px', fontWeight: 500, color: '#374151', marginBottom: '2px' }}>
               review us
             </div>
-            <div style={{ fontSize: '42px', fontWeight: 700, color: '#1f2937', letterSpacing: '-0.02em' }}>
+            <div style={{ fontSize: '32px', fontWeight: 700, color: '#1f2937', letterSpacing: '-0.02em' }}>
               on Google
             </div>
           </div>
 
-          <div style={{ display: 'flex', justifyContent: 'center', fontSize: '38px', color: '#FBBC05', marginTop: '6px', letterSpacing: '2px' }}>
+          <div style={{ display: 'flex', justifyContent: 'center', fontSize: '30px', color: '#FBBC05', marginTop: '4px', letterSpacing: '2px' }}>
             <span>&#9733;</span><span>&#9733;</span><span>&#9733;</span><span>&#9733;</span><span>&#9733;</span>
           </div>
         </div>
 
         {/* Middle Section: QR Code with Google Gradient Border */}
-        <div style={{ display: 'flex', justifyContent: 'center', width: '100%', margin: '16px 0' }}>
+        <div style={{ display: 'flex', justifyContent: 'center', width: '100%', margin: '12px 0' }}>
           {loading ? (
-            <div style={{ width: '252px', height: '252px', backgroundColor: '#f9fafb', borderRadius: '24px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#9ca3af' }}>
+            <div style={{ width: '200px', height: '200px', backgroundColor: '#f9fafb', borderRadius: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#9ca3af' }}>
               Generating QR…
             </div>
           ) : qrDataUrl ? (
-            <div style={{ 
-              background: 'linear-gradient(135deg, #EA4335 0%, #FBBC05 33%, #34A853 66%, #4285F4 100%)', // Google Colors
-              padding: '4px', // This creates the 4px multi-color border
-              borderRadius: '24px', 
+            <div style={{
+              background: 'linear-gradient(135deg, #EA4335 0%, #FBBC05 33%, #34A853 66%, #4285F4 100%)',
+              padding: '4px',
+              borderRadius: '20px',
               display: 'inline-flex'
             }}>
               <div style={{
                 backgroundColor: '#ffffff',
-                borderRadius: '20px', // Inner radius to keep edges smooth
-                padding: '12px',
+                borderRadius: '16px',
+                padding: '10px',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center'
@@ -123,23 +123,23 @@ export default function QRDisplay({ client }: { client: Client }) {
                 <img
                   src={qrDataUrl}
                   alt="QR Code"
-                  style={{ width: '220px', height: '220px', objectFit: 'contain' }}
+                  style={{ width: '180px', height: '180px', objectFit: 'contain' }}
                 />
               </div>
             </div>
           ) : (
-            <div style={{ width: '252px', height: '252px', backgroundColor: '#f9fafb', borderRadius: '24px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#9ca3af' }}>
+            <div style={{ width: '200px', height: '200px', backgroundColor: '#f9fafb', borderRadius: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#9ca3af' }}>
               No QR
             </div>
           )}
         </div>
 
-        {/* Bottom Section: Custom Centered Taglines */}
+        {/* Bottom Section: Custom Taglines */}
         <div style={{ textAlign: 'center', width: '100%' }}>
-          <p style={{ fontSize: '14px', fontWeight: 500, color: '#6b7280', margin: '0 0 6px 0' }}>
+          <p style={{ fontSize: '13px', fontWeight: 500, color: '#6b7280', margin: '0 0 4px 0' }}>
             {client.qr_subtitle || 'Your feedback helps us improve and grow.'}
           </p>
-          <p style={{ fontSize: '14px', color: '#9ca3af', fontStyle: 'italic', margin: 0 }}>
+          <p style={{ fontSize: '13px', color: '#9ca3af', fontStyle: 'italic', margin: 0 }}>
             {client.qr_tagline || 'Good days start with coffee 😊'}
           </p>
         </div>
@@ -148,10 +148,10 @@ export default function QRDisplay({ client }: { client: Client }) {
       <button
         onClick={downloadCard}
         style={{
-          marginTop: '32px',
+          marginTop: '24px',
           background: 'linear-gradient(135deg, #4f46e5, #7c3aed)',
           color: '#ffffff',
-          padding: '12px 32px',
+          padding: '12px 28px',
           borderRadius: '12px',
           fontWeight: 500,
           boxShadow: '0 10px 25px -5px rgba(79,70,229,0.4)',
@@ -160,7 +160,7 @@ export default function QRDisplay({ client }: { client: Client }) {
           display: 'inline-flex',
           alignItems: 'center',
           gap: '8px',
-          fontSize: '16px',
+          fontSize: '15px',
           transition: 'all 0.2s',
         }}
         onMouseEnter={(e) => { e.currentTarget.style.transform = 'scale(1.05)'; e.currentTarget.style.boxShadow = '0 20px 30px -5px rgba(79,70,229,0.5)'; }}
@@ -173,7 +173,7 @@ export default function QRDisplay({ client }: { client: Client }) {
       </button>
 
       {client.google_review_link && (
-        <div style={{ marginTop: '12px', fontSize: '12px', color: '#9ca3af', textAlign: 'center', maxWidth: '300px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+        <div style={{ marginTop: '10px', fontSize: '12px', color: '#9ca3af', textAlign: 'center', maxWidth: '280px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
           <span style={{ fontWeight: 500 }}>Review link:</span> {client.google_review_link}
         </div>
       )}
