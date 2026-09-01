@@ -36,7 +36,7 @@ export default async function ClientDashboardPage({ params }: { params: { slug: 
   return (
     <ClientDashboardClient
       client={client}
-      calls={calls}
+      initialCalls={calls}
       totalCalls={totalCalls}
       bookings={bookings}
     />
