@@ -73,9 +73,11 @@ export default function ClientDashboardClient({
     address: '',
   });
 
-  // Refresh calls from API
+  // Refresh calls from API – with credentials
   const refreshCalls = async () => {
-    const res = await fetch(`/api/client/${client.slug}/calls`);
+    const res = await fetch(`/api/client/${client.slug}/calls`, {
+      credentials: 'include', // ✅ sends cookies
+    });
     if (res.ok) {
       const data = await res.json();
       setCalls(data);
@@ -153,12 +155,18 @@ export default function ClientDashboardClient({
   // Edit handlers
   const handleEdit = (call: CallLog) => {
     setEditingCall(call);
+    // Convert booked_time to datetime-local format if it's a valid ISO string
+    let bookedTime = call.booked_time || '';
+    if (bookedTime && !isNaN(Date.parse(bookedTime))) {
+      const d = new Date(bookedTime);
+      bookedTime = d.toISOString().slice(0, 16); // YYYY-MM-DDTHH:mm
+    }
     setEditForm({
       customer_name: call.customer_name,
       customer_phone: call.customer_phone,
       summary: call.summary,
       status: call.status,
-      booked_time: call.booked_time || '',
+      booked_time: bookedTime,
       address: call.address || '',
     });
     setEditModalOpen(true);
@@ -169,6 +177,7 @@ export default function ClientDashboardClient({
     const res = await fetch(`/api/client/${client.slug}/calls`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
+      credentials: 'include', // ✅ sends cookies
       body: JSON.stringify({
         rowNumber: editingCall._row,
         ...editForm,
@@ -187,6 +196,7 @@ export default function ClientDashboardClient({
     if (!confirm('Are you sure you want to delete this call entry?')) return;
     const res = await fetch(`/api/client/${client.slug}/calls?row=${rowNumber}`, {
       method: 'DELETE',
+      credentials: 'include', // ✅ sends cookies
     });
     if (res.ok) {
       await refreshCalls();
