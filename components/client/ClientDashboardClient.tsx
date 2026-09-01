@@ -73,10 +73,10 @@ export default function ClientDashboardClient({
     address: '',
   });
 
-  // Refresh calls from API – with credentials
+  // Refresh calls – with credentials (fixes 401)
   const refreshCalls = async () => {
     const res = await fetch(`/api/client/${client.slug}/calls`, {
-      credentials: 'include', // ✅ sends cookies
+      credentials: 'include',
     });
     if (res.ok) {
       const data = await res.json();
@@ -84,12 +84,10 @@ export default function ClientDashboardClient({
     }
   };
 
-  // Sync with props if initialCalls changes
   useEffect(() => {
     setCalls(initialCalls);
   }, [initialCalls]);
 
-  // Unique statuses for filter
   const uniqueStatuses = useMemo(() => {
     const statusSet = new Set<string>();
     calls.forEach((call) => {
@@ -98,7 +96,6 @@ export default function ClientDashboardClient({
     return Array.from(statusSet).sort();
   }, [calls]);
 
-  // Deduplicate calls
   const dedupedCalls = useMemo(() => {
     const seen = new Set<string>();
     return calls.filter((call) => {
@@ -114,7 +111,6 @@ export default function ClientDashboardClient({
     });
   }, [calls]);
 
-  // Apply filters
   const filteredCalls = useMemo(() => {
     return dedupedCalls.filter((call) => {
       const matchType = typeFilter === 'all' || call.call_type === typeFilter;
@@ -126,7 +122,6 @@ export default function ClientDashboardClient({
     });
   }, [dedupedCalls, typeFilter, statusFilter, dateFrom, dateTo]);
 
-  // CSV Export
   const exportCSV = () => {
     if (filteredCalls.length === 0) {
       alert('No calls to export with current filters.');
@@ -152,21 +147,14 @@ export default function ClientDashboardClient({
     link.click();
   };
 
-  // Edit handlers
   const handleEdit = (call: CallLog) => {
     setEditingCall(call);
-    // Convert booked_time to datetime-local format if it's a valid ISO string
-    let bookedTime = call.booked_time || '';
-    if (bookedTime && !isNaN(Date.parse(bookedTime))) {
-      const d = new Date(bookedTime);
-      bookedTime = d.toISOString().slice(0, 16); // YYYY-MM-DDTHH:mm
-    }
     setEditForm({
       customer_name: call.customer_name,
       customer_phone: call.customer_phone,
       summary: call.summary,
       status: call.status,
-      booked_time: bookedTime,
+      booked_time: call.booked_time || '',
       address: call.address || '',
     });
     setEditModalOpen(true);
@@ -177,7 +165,7 @@ export default function ClientDashboardClient({
     const res = await fetch(`/api/client/${client.slug}/calls`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      credentials: 'include', // ✅ sends cookies
+      credentials: 'include',
       body: JSON.stringify({
         rowNumber: editingCall._row,
         ...editForm,
@@ -196,7 +184,7 @@ export default function ClientDashboardClient({
     if (!confirm('Are you sure you want to delete this call entry?')) return;
     const res = await fetch(`/api/client/${client.slug}/calls?row=${rowNumber}`, {
       method: 'DELETE',
-      credentials: 'include', // ✅ sends cookies
+      credentials: 'include',
     });
     if (res.ok) {
       await refreshCalls();
@@ -578,13 +566,15 @@ export default function ClientDashboardClient({
                   <option value="Voicemail">Voicemail</option>
                 </select>
               </div>
+              {/* Booked Time – now a text input (free format) */}
               <div>
-                <label className="block text-sm font-medium text-gray-700">Booked Time</label>
+                <label className="block text-sm font-medium text-gray-700">Booked Time (free text)</label>
                 <input
-                  type="datetime-local"
+                  type="text"
                   value={editForm.booked_time}
                   onChange={(e) => setEditForm({ ...editForm, booked_time: e.target.value })}
                   className="mt-1 w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-[#4285F4] focus:border-transparent"
+                  placeholder="e.g. today at 6 PM, or 2025-01-15 14:30"
                 />
               </div>
               <div>
