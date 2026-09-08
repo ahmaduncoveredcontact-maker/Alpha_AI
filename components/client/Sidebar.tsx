@@ -57,7 +57,6 @@ export default function Sidebar({
           flex flex-col
           transition-transform duration-300 ease-in-out
           ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
-          pt-16 lg:pt-0
         `}
       >
         {/* Close button - visible only on mobile, at top right */}
@@ -70,8 +69,8 @@ export default function Sidebar({
           </button>
         </div>
 
-        {/* Navigation */}
-        <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
+        {/* Navigation - with top padding to clear the navbar */}
+        <nav className="flex-1 p-4 space-y-1 overflow-y-auto pt-16 lg:pt-4">
           {navItems.map((item) => {
             const Icon = item.icon;
             const isActive = activeTab === item.id;
