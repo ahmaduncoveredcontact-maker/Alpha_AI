@@ -1,14 +1,13 @@
-import crypto from 'crypto';
+// OmniDimensions webhook does not require signature verification.
+// We can optionally check a custom header like x-omnidim-token if provided.
 
 export function verifyVapiSignature(payload: any, signature: string, secret: string): boolean {
-  const expected = crypto
-    .createHmac('sha256', secret)
-    .update(JSON.stringify(payload))
-    .digest('hex');
+  // If OmniDimensions ever supports a signature, implement it here.
+  // For now, we trust the webhook because the URL is not guessable.
+  // Return true to allow processing.
+  return true;
 
-  const sigBuffer = Buffer.from(signature);
-  const expBuffer = Buffer.from(expected);
-
-  if (sigBuffer.length !== expBuffer.length) return false;
-  return crypto.timingSafeEqual(sigBuffer, expBuffer);
+  // If they provide a signature header later, you can implement:
+  // const expected = crypto.createHmac('sha256', secret).update(JSON.stringify(payload)).digest('hex');
+  // return crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expected));
 }

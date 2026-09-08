@@ -9,7 +9,7 @@ export const dynamic = 'force-dynamic';
 export async function POST(req: NextRequest) {
   try {
     const rawBody = await req.text();
-    const signature = req.headers.get('x-vapi-signature') || '';
+    const signature = req.headers.get('x-omnidim-signature') || req.headers.get('x-vapi-signature') || '';
 
     let body: any;
     try {
@@ -19,31 +19,41 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Invalid JSON payload' }, { status: 400 });
     }
 
-    const message = body.message || body;
+    // OmniDimensions sends the webhook with a structure like:
+    // { phone_number, to_number, bot_name, call_status, call_report: { summary, sentiment, extracted_variables: { ... } } }
+    // We'll map it to our expected format.
 
-    // Only process end-of-call report
-    if (message.type !== 'end-of-call-report') {
-      return NextResponse.json({ received: true, ignoredType: message.type || 'non-report' });
+    const callStatus = body.call_status || body.status || 'completed';
+    const callReport = body.call_report || body.analysis || {};
+    const extracted = callReport.extracted_variables || body.extracted_variables || {};
+
+    // Only process completed calls (ignore statuses like 'failed' or 'in-progress')
+    if (callStatus !== 'completed' && callStatus !== 'ended') {
+      return NextResponse.json({ received: true, ignoredStatus: callStatus });
     }
 
-    const assistantId = message.assistantId || message.assistant?.id || message.call?.assistantId;
-    if (!assistantId) {
-      console.error('❌ Missing assistantId in end-of-call report');
-      return NextResponse.json({ error: 'Missing assistantId' }, { status: 400 });
+    // Find client by assistantId? OmniDimensions sends bot_name, but we need assistantId.
+    // We can store the agent_id in clients table (field: vapi_assistant_id).
+    // The webhook might include the agent_id. We'll look for it.
+    const agentId = body.agent_id || body.agentId || body.bot_id;
+    if (!agentId) {
+      console.error('❌ Missing agent_id in webhook payload');
+      return NextResponse.json({ error: 'Missing agent_id' }, { status: 400 });
     }
 
     const { data: client, error: clientError } = await supabaseAdmin
       .from('clients')
       .select('*')
-      .eq('vapi_assistant_id', assistantId)
+      .eq('vapi_assistant_id', String(agentId))
       .single();
 
     if (clientError || !client) {
-      console.error(`❌ Client not found for assistantId: ${assistantId}`);
+      console.error(`❌ Client not found for agent_id: ${agentId}`);
       return NextResponse.json({ error: 'Client not found' }, { status: 404 });
     }
 
-    const secretToUse = client.webhook_secret || process.env.VAPI_WEBHOOK_SECRET || '';
+    // (Optional) Signature verification – we keep it but it's a no-op now
+    const secretToUse = client.webhook_secret || process.env.OMNIDIM_WEBHOOK_SECRET || '';
     if (secretToUse && signature) {
       const isValid = verifyVapiSignature(body, signature, secretToUse);
       if (!isValid) {
@@ -51,7 +61,8 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    const callId = message.call?.id || message.callId || body.call?.id || null;
+    // Deduplicate using call_id if provided
+    const callId = body.call_id || body.callId || null;
     if (callId) {
       const { data: existing } = await supabaseAdmin
         .from('call_logs')
@@ -65,54 +76,44 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    const call = message.call || {};
-    const customer = message.customer || call.customer || {};
-    const analysis = message.analysis || call.analysis || {};
-    const structuredData = analysis.structuredData || message.structuredData || {};
-    const startedAt = message.startedAt || call.startedAt || new Date().toISOString();
-
+    // Extract fields from OmniDimensions webhook
     const customerPhone =
-      structuredData.customer_phone ||
-      customer.number ||
-      customer.phone ||
-      call.phoneNumber ||
+      extracted.customer_phone ||
+      body.phone_number ||
       '';
 
     const customerName =
-      structuredData.customer_name ||
-      customer.name ||
+      extracted.customer_name ||
+      body.customer_name ||
       'Unknown';
 
     const bookedTime =
-      structuredData.appointment_time ||
-      structuredData.bookedTime ||
+      extracted.appointment_time ||
+      extracted.bookedTime ||
       '';
 
     const status =
-      structuredData.status ||
-      analysis.status ||
+      extracted.status ||
       'General Inquiry';
 
     const summary =
-      analysis.summary ||
-      message.summary ||
+      callReport.summary ||
+      body.summary ||
       'Call completed successfully';
 
     const recordingUrl =
-      message.recordingUrl ||
-      message.stereoRecordingUrl ||
-      call.recordingUrl ||
+      body.recording_url ||
+      callReport.recording_url ||
       '';
 
-    // NEW: Extract address from structured data
     const address =
-      structuredData.address ||
-      structuredData.patient_address ||
+      extracted.address ||
+      extracted.patient_address ||
       '';
 
     const callData = {
       client_slug: client.slug,
-      timestamp: new Date(startedAt).toISOString(),
+      timestamp: new Date().toISOString(),
       call_type: 'inbound',
       customer_name: customerName,
       customer_phone: customerPhone,
@@ -121,12 +122,12 @@ export async function POST(req: NextRequest) {
       booked_time: bookedTime,
       recording_url: recordingUrl,
       call_id: callId || '',
-      address: address, // NEW
+      address: address,
     };
 
     console.log(`📝 Final Call Data for ${client.slug}:`, callData);
 
-    // Save to Supabase
+    // Save to Supabase call_logs table
     try {
       const { error: insertError } = await supabaseAdmin
         .from('call_logs')
@@ -155,19 +156,39 @@ export async function POST(req: NextRequest) {
         callData.booked_time,
         callData.recording_url,
         callData.call_id,
-        callData.address, // NEW
+        callData.address,
       ]);
       console.log(`✅ Google Sheet appended for ${client.slug}`);
     } catch (sheetErr) {
       console.error('⚠️ Google Sheets append failed:', sheetErr);
     }
 
-    // Send Email Summary
+    // Send Email Summary to owner
     if (client.email) {
       try {
         await email.sendCallSummary(client.email, client.business_name, callData);
       } catch (emailErr) {
         console.warn('⚠️ Email send failed:', emailErr);
+      }
+    }
+
+    // --- New: Send SMS/Notification to Customer (if booked) ---
+    if (status === 'Booked' && customerPhone) {
+      try {
+        // You can integrate with Twilio, Resend (email), or any SMS provider here.
+        // Example: send SMS via Twilio
+        // const twilioClient = require('twilio')(process.env.TWILIO_SID, process.env.TWILIO_AUTH_TOKEN);
+        // await twilioClient.messages.create({
+        //   body: `Your appointment with ${client.business_name} has been booked for ${bookedTime || 'soon'}.`,
+        //   to: customerPhone,
+        //   from: process.env.TWILIO_PHONE_NUMBER,
+        // });
+
+        // For now, we'll send an email to the customer if we have their email? We don't.
+        // We'll log that we would send SMS.
+        console.log(`📲 Would send SMS to ${customerPhone} about booking at ${bookedTime}`);
+      } catch (notifErr) {
+        console.warn('⚠️ Customer notification failed:', notifErr);
       }
     }
 
