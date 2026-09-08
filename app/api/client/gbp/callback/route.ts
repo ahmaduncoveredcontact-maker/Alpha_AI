@@ -8,7 +8,9 @@ export async function GET(req: NextRequest) {
   const error = searchParams.get('error');
 
   if (error) {
-    return NextResponse.redirect(`${process.env.NEXT_PUBLIC_BASE_URL}/live?error=gbp_auth_failed`);
+    return NextResponse.redirect(
+      `${process.env.NEXT_PUBLIC_BASE_URL}/live?error=gbp_auth_failed`
+    );
   }
 
   if (!code) {
@@ -22,34 +24,54 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'No slug found' }, { status: 400 });
   }
 
-  // Exchange code for tokens
+  // Get environment variables
   const clientId = process.env.GOOGLE_CLIENT_ID;
   const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
-  const redirectUri = process.env.GOOGLE_REDIRECT_URI || `${process.env.NEXT_PUBLIC_BASE_URL}/api/client/gbp/callback`;
+  const redirectUri = process.env.GOOGLE_REDIRECT_URI || 
+    `${process.env.NEXT_PUBLIC_BASE_URL}/api/client/gbp/callback`;
+
+  // Validate environment variables
+  if (!clientId || !clientSecret) {
+    console.error('❌ Missing GOOGLE_CLIENT_ID or GOOGLE_CLIENT_SECRET');
+    return NextResponse.redirect(
+      `${process.env.NEXT_PUBLIC_BASE_URL}/live?error=missing_env_vars`
+    );
+  }
+
+  // Exchange code for tokens - FIXED: Use string concatenation, not URLSearchParams with undefined values
+  const tokenBody = new URLSearchParams();
+  tokenBody.append('code', code);
+  tokenBody.append('client_id', clientId);
+  tokenBody.append('client_secret', clientSecret);
+  tokenBody.append('redirect_uri', redirectUri);
+  tokenBody.append('grant_type', 'authorization_code');
 
   const tokenRes = await fetch('https://oauth2.googleapis.com/token', {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: new URLSearchParams({
-      code,
-      client_id: clientId,
-      client_secret: clientSecret,
-      redirect_uri: redirectUri,
-      grant_type: 'authorization_code',
-    }).toString(),
+    body: tokenBody.toString(),
   });
 
   if (!tokenRes.ok) {
     const errText = await tokenRes.text();
-    console.error('Token exchange failed:', errText);
-    return NextResponse.redirect(`${process.env.NEXT_PUBLIC_BASE_URL}/live?error=gbp_token_failed`);
+    console.error('❌ Token exchange failed:', errText);
+    return NextResponse.redirect(
+      `${process.env.NEXT_PUBLIC_BASE_URL}/live?error=gbp_token_failed`
+    );
   }
 
   const tokenData = await tokenRes.json();
   const { access_token, refresh_token, expires_in } = tokenData;
 
+  if (!access_token) {
+    console.error('❌ No access_token in response:', tokenData);
+    return NextResponse.redirect(
+      `${process.env.NEXT_PUBLIC_BASE_URL}/live?error=no_access_token`
+    );
+  }
+
   // Save tokens to Supabase
-  const expiry = new Date(Date.now() + expires_in * 1000).toISOString();
+  const expiry = new Date(Date.now() + (expires_in || 3600) * 1000).toISOString();
 
   const { error: updateError } = await supabaseAdmin
     .from('clients')
@@ -61,12 +83,15 @@ export async function GET(req: NextRequest) {
     .eq('slug', slug);
 
   if (updateError) {
-    console.error('Failed to save tokens:', updateError);
-    return NextResponse.redirect(`${process.env.NEXT_PUBLIC_BASE_URL}/live?error=gbp_save_failed`);
+    console.error('❌ Failed to save tokens:', updateError);
+    return NextResponse.redirect(
+      `${process.env.NEXT_PUBLIC_BASE_URL}/live?error=gbp_save_failed`
+    );
   }
 
   // Clear the cookie
   cookieStore.delete('gbp_oauth_slug');
 
+  console.log(`✅ Google OAuth successful for client: ${slug}`);
   return NextResponse.redirect(`${process.env.NEXT_PUBLIC_BASE_URL}/live/${slug}`);
 }

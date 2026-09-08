@@ -9,6 +9,16 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'Missing slug' }, { status: 400 });
   }
 
+  // Validate environment variables
+  const clientId = process.env.GOOGLE_CLIENT_ID;
+  if (!clientId) {
+    console.error('❌ Missing GOOGLE_CLIENT_ID');
+    return NextResponse.json(
+      { error: 'Google OAuth not configured properly. Missing GOOGLE_CLIENT_ID.' },
+      { status: 500 }
+    );
+  }
+
   // Store the slug in a cookie to retrieve after OAuth callback
   const cookieStore = await cookies();
   cookieStore.set('gbp_oauth_slug', slug, {
@@ -18,11 +28,17 @@ export async function GET(req: NextRequest) {
     path: '/',
   });
 
-  const clientId = process.env.GOOGLE_CLIENT_ID;
-  const redirectUri = process.env.GOOGLE_REDIRECT_URI || `${process.env.NEXT_PUBLIC_BASE_URL}/api/client/gbp/callback`;
+  const redirectUri = process.env.GOOGLE_REDIRECT_URI || 
+    `${process.env.NEXT_PUBLIC_BASE_URL}/api/client/gbp/callback`;
   const scope = 'https://www.googleapis.com/auth/business.manage';
 
-  const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${clientId}&redirect_uri=${redirectUri}&response_type=code&scope=${scope}&access_type=offline&prompt=consent`;
+  const authUrl = `https://accounts.google.com/o/oauth2/v2/auth` +
+    `?client_id=${clientId}` +
+    `&redirect_uri=${redirectUri}` +
+    `&response_type=code` +
+    `&scope=${scope}` +
+    `&access_type=offline` +
+    `&prompt=consent`;
 
   return NextResponse.redirect(authUrl);
 }
