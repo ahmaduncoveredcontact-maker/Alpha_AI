@@ -33,6 +33,12 @@ interface Client {
   working_days?: string[];
   timezone?: string;
   cal_event_slug?: string;
+  day_times?: {
+    [key: string]: {
+      start: string;
+      end: string;
+    };
+  };
 }
 
 export default function EditClientForm({ client }: { client: Client }) {
@@ -47,6 +53,11 @@ export default function EditClientForm({ client }: { client: Client }) {
     error: '',
   });
 
+  // Per-day time state
+  const [dayTimes, setDayTimes] = useState<{ [key: string]: { start: string; end: string } }>(
+    client.day_times || {}
+  );
+
   const handleToggle = (key: keyof Client) => {
     setForm({ ...form, [key]: !form[key] });
   };
@@ -57,7 +68,19 @@ export default function EditClientForm({ client }: { client: Client }) {
       ...form,
       working_days: currentDays.includes(day)
         ? currentDays.filter(d => d !== day)
-        : [...currentDays, day]
+        : [...currentDays, day],
+    });
+  };
+
+  const handleDayTimeChange = (day: string, start: string, end: string) => {
+    const updatedDayTimes = {
+      ...dayTimes,
+      [day]: { start, end },
+    };
+    setDayTimes(updatedDayTimes);
+    setForm({
+      ...form,
+      day_times: updatedDayTimes,
     });
   };
 
@@ -154,8 +177,8 @@ export default function EditClientForm({ client }: { client: Client }) {
   };
 
   const GooglePill = () => (
-    <span 
-      className="w-1.5 h-6 rounded-full" 
+    <span
+      className="w-1.5 h-6 rounded-full"
       style={{ background: 'linear-gradient(180deg, #4285F4 0%, #EA4335 33%, #FBBC05 66%, #34A853 100%)' }}
     />
   );
@@ -225,7 +248,7 @@ export default function EditClientForm({ client }: { client: Client }) {
             </div>
           </div>
 
-          {/* Calendar Settings */}
+          {/* Calendar Settings - with per-day time editing */}
           <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100 transition duration-300 hover:shadow-md hover:border-blue-200">
             <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
               <GooglePill />
@@ -244,6 +267,8 @@ export default function EditClientForm({ client }: { client: Client }) {
                     working_hours_end: end,
                   });
                 }}
+                onDayTimeChange={handleDayTimeChange}
+                dayTimes={dayTimes}
               />
 
               <div className="mt-4">
@@ -265,7 +290,7 @@ export default function EditClientForm({ client }: { client: Client }) {
                 <div className="mt-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
                   <p className="text-sm text-blue-700">
                     <span className="font-medium">Booking Link:</span>{' '}
-                    <a 
+                    <a
                       href={`https://cal.com/${process.env.NEXT_PUBLIC_CAL_USERNAME || 'alphaai'}/${form.cal_event_slug}`}
                       target="_blank"
                       rel="noopener noreferrer"
@@ -374,7 +399,7 @@ export default function EditClientForm({ client }: { client: Client }) {
             </div>
 
             <hr className="my-5 border-gray-100" />
-            
+
             <div className="space-y-2">
               <label className="block text-sm font-medium text-gray-700">GBP Account ID</label>
               <input
@@ -490,21 +515,21 @@ export default function EditClientForm({ client }: { client: Client }) {
           <h4 className="font-semibold text-gray-800 mb-4 flex items-center justify-center gap-2 text-lg">
             📱 QR Card Preview
           </h4>
-          
-          <div 
+
+          <div
             className="w-full rounded-2xl border flex justify-center overflow-hidden"
-            style={{ 
+            style={{
               background: 'linear-gradient(135deg, rgba(66,133,244,0.03) 0%, rgba(234,67,53,0.03) 33%, rgba(251,188,5,0.03) 66%, rgba(52,168,83,0.03) 100%)',
               borderColor: 'rgba(66,133,244,0.1)',
               height: '520px',
-              paddingTop: '24px'
+              paddingTop: '24px',
             }}
           >
             <div className="origin-top" style={{ transform: 'scale(0.72)', width: '400px' }}>
               <QRDisplay client={form} />
             </div>
           </div>
-          
+
           <p className="text-xs text-gray-400 mt-4 text-center">
             Preview updates live as you edit fields. Downloads are always full resolution.
           </p>
