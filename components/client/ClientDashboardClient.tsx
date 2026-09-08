@@ -9,6 +9,7 @@ import AppointmentsPage from './AppointmentsPage';
 import CallLogPage from './CallLogPage';
 import SchedulePage from './SchedulePage';
 import SettingsPage from './SettingsPage';
+import { X } from 'lucide-react'; // ✅ ADDED X
 
 interface CallLog {
   _row: number;
