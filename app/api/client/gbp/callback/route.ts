@@ -1,3 +1,4 @@
+// app/api/client/gbp/callback/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { supabaseAdmin } from '@/lib/supabase/admin';
@@ -8,37 +9,30 @@ export async function GET(req: NextRequest) {
   const error = searchParams.get('error');
 
   if (error) {
-    return NextResponse.redirect(
-      `${process.env.NEXT_PUBLIC_BASE_URL}/live?error=gbp_auth_failed`
-    );
+    return NextResponse.redirect(`${process.env.NEXT_PUBLIC_BASE_URL}/live?error=gbp_auth_failed`);
   }
 
   if (!code) {
     return NextResponse.json({ error: 'Missing authorization code' }, { status: 400 });
   }
 
-  // Get slug from cookie
   const cookieStore = await cookies();
   const slug = cookieStore.get('gbp_oauth_slug')?.value;
   if (!slug) {
     return NextResponse.json({ error: 'No slug found' }, { status: 400 });
   }
 
-  // Get environment variables
   const clientId = process.env.GOOGLE_CLIENT_ID;
   const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
   const redirectUri = process.env.GOOGLE_REDIRECT_URI || 
     `${process.env.NEXT_PUBLIC_BASE_URL}/api/client/gbp/callback`;
 
-  // Validate environment variables
   if (!clientId || !clientSecret) {
-    console.error('❌ Missing GOOGLE_CLIENT_ID or GOOGLE_CLIENT_SECRET');
-    return NextResponse.redirect(
-      `${process.env.NEXT_PUBLIC_BASE_URL}/live?error=missing_env_vars`
-    );
+    console.error('❌ Missing Google OAuth credentials');
+    return NextResponse.redirect(`${process.env.NEXT_PUBLIC_BASE_URL}/live?error=missing_env`);
   }
 
-  // Exchange code for tokens - FIXED: Use string concatenation, not URLSearchParams with undefined values
+  // Exchange code for tokens
   const tokenBody = new URLSearchParams();
   tokenBody.append('code', code);
   tokenBody.append('client_id', clientId);
@@ -55,19 +49,15 @@ export async function GET(req: NextRequest) {
   if (!tokenRes.ok) {
     const errText = await tokenRes.text();
     console.error('❌ Token exchange failed:', errText);
-    return NextResponse.redirect(
-      `${process.env.NEXT_PUBLIC_BASE_URL}/live?error=gbp_token_failed`
-    );
+    return NextResponse.redirect(`${process.env.NEXT_PUBLIC_BASE_URL}/live?error=gbp_token_failed`);
   }
 
   const tokenData = await tokenRes.json();
   const { access_token, refresh_token, expires_in } = tokenData;
 
   if (!access_token) {
-    console.error('❌ No access_token in response:', tokenData);
-    return NextResponse.redirect(
-      `${process.env.NEXT_PUBLIC_BASE_URL}/live?error=no_access_token`
-    );
+    console.error('❌ No access_token in response');
+    return NextResponse.redirect(`${process.env.NEXT_PUBLIC_BASE_URL}/live?error=no_access_token`);
   }
 
   // Save tokens to Supabase
@@ -84,9 +74,7 @@ export async function GET(req: NextRequest) {
 
   if (updateError) {
     console.error('❌ Failed to save tokens:', updateError);
-    return NextResponse.redirect(
-      `${process.env.NEXT_PUBLIC_BASE_URL}/live?error=gbp_save_failed`
-    );
+    return NextResponse.redirect(`${process.env.NEXT_PUBLIC_BASE_URL}/live?error=gbp_save_failed`);
   }
 
   // Clear the cookie

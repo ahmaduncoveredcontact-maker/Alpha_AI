@@ -9,34 +9,34 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'Missing slug' }, { status: 400 });
   }
 
-  // Validate environment variables
   const clientId = process.env.GOOGLE_CLIENT_ID;
   if (!clientId) {
-    console.error('❌ Missing GOOGLE_CLIENT_ID');
-    return NextResponse.json(
-      { error: 'Google OAuth not configured properly. Missing GOOGLE_CLIENT_ID.' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Missing GOOGLE_CLIENT_ID' }, { status: 500 });
   }
 
-  // Store the slug in a cookie to retrieve after OAuth callback
+  // Store slug in cookie for callback
   const cookieStore = await cookies();
   cookieStore.set('gbp_oauth_slug', slug, {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
-    maxAge: 60 * 10, // 10 minutes
+    maxAge: 60 * 10,
     path: '/',
   });
 
   const redirectUri = process.env.GOOGLE_REDIRECT_URI || 
     `${process.env.NEXT_PUBLIC_BASE_URL}/api/client/gbp/callback`;
-  const scope = 'https://www.googleapis.com/auth/business.manage';
+
+  // ✅ ADDED: Gmail readonly scope
+  const scope = [
+    'https://www.googleapis.com/auth/business.manage',
+    'https://www.googleapis.com/auth/gmail.readonly'  // NEW
+  ].join(' ');
 
   const authUrl = `https://accounts.google.com/o/oauth2/v2/auth` +
     `?client_id=${clientId}` +
     `&redirect_uri=${redirectUri}` +
     `&response_type=code` +
-    `&scope=${scope}` +
+    `&scope=${encodeURIComponent(scope)}` +
     `&access_type=offline` +
     `&prompt=consent`;
 
