@@ -1,10 +1,11 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import { Search, Filter, Download, Edit, Trash2, ExternalLink } from 'lucide-react';
+import { Search, Download, Edit, Trash2, ExternalLink } from 'lucide-react';
 
 interface CallLog {
   _row: number;
+  client_slug: string; // ✅ ADDED to match the other interface
   timestamp: string;
   call_type: string;
   customer_name: string;

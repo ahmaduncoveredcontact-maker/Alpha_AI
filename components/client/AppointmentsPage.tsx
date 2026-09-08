@@ -1,10 +1,12 @@
 'use client';
 
-import { Calendar as CalendarIcon, Clock, MapPin, User, Phone } from 'lucide-react';
+import { Calendar as CalendarIcon, Clock, MapPin, Phone } from 'lucide-react';
 
 interface CallLog {
   _row: number;
+  client_slug: string; // ✅ ADDED
   timestamp: string;
+  call_type: string; // ✅ ADDED
   customer_name: string;
   customer_phone: string;
   booked_time?: string;
