@@ -6,6 +6,7 @@ interface Client {
   id: string;
   business_name: string;
   slug: string;
+  delivery_address?: string; // ✅ ADDED
   google_review_link?: string;
   qr_title?: string;
   qr_subtitle?: string;
