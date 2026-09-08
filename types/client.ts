@@ -26,25 +26,17 @@ export interface Client {
   outbound_calling_enabled: boolean;
   consent_confirmed: boolean;
   manager_access_granted: boolean;
-  gbp_account_id?: string;
-  gbp_location_id?: string;
-
-  // NEW: Calendar fields
-  working_hours_start?: string;    // Default start time (e.g., "09:00")
-  working_hours_end?: string;      // Default end time (e.g., "17:00")
-  working_days?: string[];         // Array of day names ["Monday", "Tuesday", ...]
-  timezone?: string;               // IANA timezone (e.g., "America/New_York")
-  cal_event_slug?: string;         // Cal.com event slug for booking
-
-  // NEW: Per-day time overrides
-  // Example: { "Monday": { start: "08:00", end: "16:00" }, "Tuesday": { start: "09:00", end: "18:00" } }
+  working_hours_start?: string;
+  working_hours_end?: string;
+  working_days?: string[];
+  timezone?: string;
+  cal_event_slug?: string;
   day_times?: {
     [key: string]: {
       start: string;
       end: string;
     };
   };
-
   created_at: string;
   updated_at: string;
 }

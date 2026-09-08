@@ -43,7 +43,6 @@ export default function EditClientForm({ client }: { client: Client }) {
   const router = useRouter();
   const [form, setForm] = useState(client);
   const [loading, setLoading] = useState(false);
-  const [syncing, setSyncing] = useState(false);
   const [resetPassword, setResetPassword] = useState({
     newCode: '',
     confirmCode: '',
@@ -71,14 +70,11 @@ export default function EditClientForm({ client }: { client: Client }) {
   };
 
   const handleDayTimeChange = (day: string, start: string, end: string) => {
-    // Update local dayTimes state
     const updatedDayTimes = {
       ...dayTimes,
       [day]: { start, end },
     };
     setDayTimes(updatedDayTimes);
-
-    // Update form state
     setForm({
       ...form,
       day_times: updatedDayTimes,
@@ -110,25 +106,6 @@ export default function EditClientForm({ client }: { client: Client }) {
       const data = await res.json();
       alert(`New webhook URL: ${data.webhook_url}`);
       router.refresh();
-    }
-  };
-
-  const handleSyncGBP = async () => {
-    if (!confirm('This will discover your first Google Business Profile location and store its IDs. Continue?')) return;
-    setSyncing(true);
-    const res = await fetch('/api/admin/sync-gbp', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ slug: client.slug }),
-    });
-    setSyncing(false);
-    if (res.ok) {
-      const data = await res.json();
-      alert(`Synced: Account ${data.accountName}, Location ${data.locationName}`);
-      router.refresh();
-    } else {
-      const err = await res.json();
-      alert(`Sync failed: ${err.error}`);
     }
   };
 
@@ -363,11 +340,11 @@ export default function EditClientForm({ client }: { client: Client }) {
             </div>
           </div>
 
-          {/* Toggles & Integrations */}
+          {/* Toggles - GBP fields REMOVED */}
           <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100 transition duration-300 hover:shadow-md">
             <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
               <GooglePill />
-              Toggles & Integrations
+              Toggles
             </h3>
             <div className="space-y-3">
               <div className="flex items-center space-x-2">
@@ -397,34 +374,6 @@ export default function EditClientForm({ client }: { client: Client }) {
                 />
                 <label className="text-sm text-gray-700">Manager Access Granted</label>
               </div>
-            </div>
-
-            <hr className="my-5 border-gray-100" />
-
-            <div className="space-y-2">
-              <label className="block text-sm font-medium text-gray-700">GBP Account ID</label>
-              <input
-                value={form.gbp_account_id || ''}
-                onChange={(e) => setForm({ ...form, gbp_account_id: e.target.value })}
-                className="mt-1 w-full border border-gray-300 rounded-lg px-4 py-2 text-sm focus:ring-2 focus:ring-[#34A853] outline-none"
-                placeholder="Auto-filled after sync"
-              />
-              <label className="block text-sm font-medium text-gray-700 mt-2">GBP Location ID</label>
-              <input
-                value={form.gbp_location_id || ''}
-                onChange={(e) => setForm({ ...form, gbp_location_id: e.target.value })}
-                className="mt-1 w-full border border-gray-300 rounded-lg px-4 py-2 text-sm focus:ring-2 focus:ring-[#34A853] outline-none"
-                placeholder="Auto-filled after sync"
-              />
-              <button
-                type="button"
-                onClick={handleSyncGBP}
-                disabled={syncing}
-                style={{ backgroundColor: '#34A853' }}
-                className="mt-3 text-white px-5 py-2 rounded-lg text-sm font-medium hover:opacity-90 disabled:opacity-50 transition shadow-sm"
-              >
-                {syncing ? 'Syncing...' : 'Sync GBP Locations'}
-              </button>
             </div>
           </div>
 
