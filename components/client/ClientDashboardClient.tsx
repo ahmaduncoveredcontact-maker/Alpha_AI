@@ -36,6 +36,13 @@ interface Client {
   working_days?: string[];
   timezone?: string;
   cal_event_slug?: string;
+  // NEW: Per-day times
+  day_times?: {
+    [key: string]: {
+      start: string;
+      end: string;
+    };
+  };
 }
 
 const statusColors: Record<string, string> = {
@@ -83,6 +90,12 @@ export default function ClientDashboardClient({
   // Schedule state
   const [savingSchedule, setSavingSchedule] = useState(false);
   const [scheduleMessage, setScheduleMessage] = useState('');
+  
+  // Per-day time state
+  const [dayTimes, setDayTimes] = useState<{ [key: string]: { start: string; end: string } }>(
+    client.day_times || {}
+  );
+  
   const [scheduleData, setScheduleData] = useState({
     working_days: client.working_days || ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'],
     working_hours_start: client.working_hours_start || '09:00',
@@ -119,6 +132,9 @@ export default function ClientDashboardClient({
           working_hours_end: data.working_hours_end || scheduleData.working_hours_end,
           timezone: data.timezone || scheduleData.timezone,
         });
+        if (data.day_times) {
+          setDayTimes(data.day_times);
+        }
         setTimeout(() => window.location.reload(), 1000);
       } else {
         const err = await res.json();
@@ -129,6 +145,22 @@ export default function ClientDashboardClient({
     } finally {
       setSavingSchedule(false);
     }
+  };
+
+  // Handler for per-day time changes
+  const handleDayTimeChange = (day: string, start: string, end: string) => {
+    const updatedDayTimes = {
+      ...dayTimes,
+      [day]: { start, end },
+    };
+    setDayTimes(updatedDayTimes);
+    updateSchedule({
+      working_days: scheduleData.working_days,
+      working_hours_start: scheduleData.working_hours_start,
+      working_hours_end: scheduleData.working_hours_end,
+      timezone: scheduleData.timezone,
+      day_times: updatedDayTimes,
+    });
   };
 
   useEffect(() => {
@@ -340,6 +372,7 @@ export default function ClientDashboardClient({
                   working_hours_start: scheduleData.working_hours_start,
                   working_hours_end: scheduleData.working_hours_end,
                   timezone: scheduleData.timezone,
+                  day_times: dayTimes,
                 });
               }}
               onHoursChange={(start, end) => {
@@ -348,8 +381,11 @@ export default function ClientDashboardClient({
                   working_hours_start: start,
                   working_hours_end: end,
                   timezone: scheduleData.timezone,
+                  day_times: dayTimes,
                 });
               }}
+              onDayTimeChange={handleDayTimeChange}
+              dayTimes={dayTimes}
             />
 
             <div className="mt-4">
@@ -361,6 +397,7 @@ export default function ClientDashboardClient({
                   working_hours_start: scheduleData.working_hours_start,
                   working_hours_end: scheduleData.working_hours_end,
                   timezone: e.target.value,
+                  day_times: dayTimes,
                 })}
                 className="mt-1 w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-[#4285F4] outline-none transition"
               >

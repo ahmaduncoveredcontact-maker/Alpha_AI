@@ -16,7 +16,6 @@ interface WeekScheduleViewProps {
   onDayToggle: (day: string) => void;
   onHoursChange: (start: string, end: string) => void;
   readOnly?: boolean;
-  // NEW: Per-day time editing
   onDayTimeChange?: (day: string, start: string, end: string) => void;
   dayTimes?: { [key: string]: { start: string; end: string } };
 }
@@ -47,12 +46,13 @@ export default function WeekScheduleView({
       const dateStr = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 
       const daySchedule = dayTimes[dayName] || {};
+      const isEnabled = working_days.includes(dayName);
       nextDays.push({
         key: dayName,
         label: isToday ? `Today (${dayName})` : dayName,
         date: dateStr,
         isToday,
-        enabled: working_days.includes(dayName),
+        enabled: isEnabled,
         start: daySchedule.start || working_hours_start || '09:00',
         end: daySchedule.end || working_hours_end || '17:00',
       });
@@ -60,7 +60,7 @@ export default function WeekScheduleView({
     setWeekDays(nextDays);
   }, [working_days, working_hours_start, working_hours_end, dayTimes]);
 
-  const handleDayTimeChange = (dayKey: string, start: string, end: string) => {
+  const handleDayTimeChangeLocal = (dayKey: string, start: string, end: string) => {
     if (onDayTimeChange) {
       onDayTimeChange(dayKey, start, end);
     }
@@ -98,13 +98,19 @@ export default function WeekScheduleView({
                 <input
                   type="time"
                   value={day.start}
-                  onChange={(e) => handleDayTimeChange(day.key, e.target.value, day.end)}
+                  onChange={(e) => {
+                    const newStart = e.target.value;
+                    handleDayTimeChangeLocal(day.key, newStart, day.end);
+                  }}
                   className="w-full text-xs border border-gray-300 rounded px-1.5 py-1 focus:ring-1 focus:ring-[#4285F4] outline-none"
                 />
                 <input
                   type="time"
                   value={day.end}
-                  onChange={(e) => handleDayTimeChange(day.key, day.start, e.target.value)}
+                  onChange={(e) => {
+                    const newEnd = e.target.value;
+                    handleDayTimeChangeLocal(day.key, day.start, newEnd);
+                  }}
                   className="w-full text-xs border border-gray-300 rounded px-1.5 py-1 focus:ring-1 focus:ring-[#4285F4] outline-none"
                 />
               </div>

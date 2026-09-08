@@ -22,8 +22,6 @@ interface Client {
   outbound_calling_enabled: boolean;
   consent_confirmed: boolean;
   manager_access_granted: boolean;
-  gbp_account_id?: string;
-  gbp_location_id?: string;
   qr_main_url?: string;
   qr_wallpaper_url?: string;
   qr_sticker_url?: string;
@@ -73,11 +71,14 @@ export default function EditClientForm({ client }: { client: Client }) {
   };
 
   const handleDayTimeChange = (day: string, start: string, end: string) => {
+    // Update local dayTimes state
     const updatedDayTimes = {
       ...dayTimes,
       [day]: { start, end },
     };
     setDayTimes(updatedDayTimes);
+
+    // Update form state
     setForm({
       ...form,
       day_times: updatedDayTimes,
@@ -248,7 +249,7 @@ export default function EditClientForm({ client }: { client: Client }) {
             </div>
           </div>
 
-          {/* Calendar Settings - with per-day time editing */}
+          {/* Calendar Settings */}
           <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100 transition duration-300 hover:shadow-md hover:border-blue-200">
             <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
               <GooglePill />
