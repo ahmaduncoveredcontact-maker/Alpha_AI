@@ -1,10 +1,18 @@
 import { createClient } from '@/lib/supabase/server';
-import { notFound } from 'next/navigation';
+import { cookies } from 'next/headers'; // ✅ ADD THIS
+import { redirect, notFound } from 'next/navigation';
 import { getWeekRange } from '@/lib/utils/dateHelpers';
 import { ThemeProvider } from '@/components/client/ThemeContext';
 import ClientDashboardClient from '@/components/client/ClientDashboardClient';
 
 export default async function ClientDashboardPage({ params }: { params: { slug: string } }) {
+  // ✅ Check client session cookie
+  const cookieStore = await cookies();
+  const sessionSlug = cookieStore.get('client_session')?.value;
+  if (!sessionSlug || sessionSlug !== params.slug) {
+    redirect(`/live/${params.slug}/login`);
+  }
+
   const supabase = await createClient();
   const { data: client, error } = await supabase
     .from('clients')
