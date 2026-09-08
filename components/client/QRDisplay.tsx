@@ -56,28 +56,18 @@ export default function QRDisplay({ client }: { client: Client }) {
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%' }}>
-      {/* Card – responsive for modal, fixed for download */}
+    <div className="flex flex-col items-center w-full">
+      {/* Card – centered with max-width */}
       <div
         ref={cardRef}
+        className="w-full max-w-[380px] mx-auto bg-white rounded-2xl shadow-xl p-6 flex flex-col items-center"
         style={{
-          width: '100%',
-          maxWidth: '380px', // fits inside the modal's max-w-md (384px)
-          padding: '28px 20px',
           boxSizing: 'border-box',
-          backgroundColor: '#ffffff',
-          borderRadius: '16px',
-          boxShadow: '0 20px 60px -15px rgba(0,0,0,0.2)',
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          margin: '0 auto',
           fontFamily: 'system-ui, -apple-system, sans-serif',
         }}
       >
-        {/* Top Section: Google Branding & Call to Action */}
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%' }}>
+        {/* Google Branding */}
+        <div className="flex flex-col items-center w-full">
           <svg width="72" height="72" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ marginBottom: '10px' }}>
             <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4"/>
             <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
@@ -85,86 +75,54 @@ export default function QRDisplay({ client }: { client: Client }) {
             <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
           </svg>
 
-          <div style={{ textAlign: 'center', lineHeight: '1.1' }}>
-            <div style={{ fontSize: '20px', fontWeight: 500, color: '#374151', marginBottom: '2px' }}>
-              review us
-            </div>
-            <div style={{ fontSize: '32px', fontWeight: 700, color: '#1f2937', letterSpacing: '-0.02em' }}>
-              on Google
-            </div>
+          <div className="text-center">
+            <div className="text-xl font-medium text-gray-700">review us</div>
+            <div className="text-3xl font-bold text-gray-900">on Google</div>
           </div>
 
-          <div style={{ display: 'flex', justifyContent: 'center', fontSize: '30px', color: '#FBBC05', marginTop: '4px', letterSpacing: '2px' }}>
-            <span>&#9733;</span><span>&#9733;</span><span>&#9733;</span><span>&#9733;</span><span>&#9733;</span>
+          <div className="flex justify-center text-3xl text-yellow-500 mt-1 tracking-widest">
+            <span>★</span><span>★</span><span>★</span><span>★</span><span>★</span>
           </div>
         </div>
 
-        {/* Middle Section: QR Code with Google Gradient Border */}
-        <div style={{ display: 'flex', justifyContent: 'center', width: '100%', margin: '12px 0' }}>
+        {/* QR Code - centered */}
+        <div className="flex justify-center w-full my-4">
           {loading ? (
-            <div style={{ width: '200px', height: '200px', backgroundColor: '#f9fafb', borderRadius: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#9ca3af' }}>
+            <div className="w-[200px] h-[200px] bg-gray-100 rounded-2xl flex items-center justify-center text-gray-400">
               Generating QR…
             </div>
           ) : qrDataUrl ? (
-            <div style={{
-              background: 'linear-gradient(135deg, #EA4335 0%, #FBBC05 33%, #34A853 66%, #4285F4 100%)',
-              padding: '4px',
-              borderRadius: '20px',
-              display: 'inline-flex'
-            }}>
-              <div style={{
-                backgroundColor: '#ffffff',
-                borderRadius: '16px',
-                padding: '10px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center'
-              }}>
+            <div className="relative p-1 rounded-2xl bg-gradient-to-r from-red-500 via-yellow-500 via-green-500 to-blue-500">
+              <div className="bg-white rounded-xl p-2">
                 <img
                   src={qrDataUrl}
                   alt="QR Code"
-                  style={{ width: '180px', height: '180px', objectFit: 'contain' }}
+                  className="w-[180px] h-[180px] object-contain"
                 />
               </div>
             </div>
           ) : (
-            <div style={{ width: '200px', height: '200px', backgroundColor: '#f9fafb', borderRadius: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#9ca3af' }}>
+            <div className="w-[200px] h-[200px] bg-gray-100 rounded-2xl flex items-center justify-center text-gray-400">
               No QR
             </div>
           )}
         </div>
 
-        {/* Bottom Section: Custom Taglines */}
-        <div style={{ textAlign: 'center', width: '100%' }}>
-          <p style={{ fontSize: '13px', fontWeight: 500, color: '#6b7280', margin: '0 0 4px 0' }}>
+        {/* Bottom text - centered */}
+        <div className="text-center w-full">
+          <p className="text-sm text-gray-600">
             {client.qr_subtitle || 'Your feedback helps us improve and grow.'}
           </p>
-          <p style={{ fontSize: '13px', color: '#9ca3af', fontStyle: 'italic', margin: 0 }}>
+          <p className="text-sm text-gray-400 italic mt-1">
             {client.qr_tagline || 'Good days start with coffee 😊'}
           </p>
         </div>
       </div>
 
+      {/* Download button - centered */}
       <button
         onClick={downloadCard}
-        style={{
-          marginTop: '24px',
-          background: 'linear-gradient(135deg, #4f46e5, #7c3aed)',
-          color: '#ffffff',
-          padding: '12px 28px',
-          borderRadius: '12px',
-          fontWeight: 500,
-          boxShadow: '0 10px 25px -5px rgba(79,70,229,0.4)',
-          border: 'none',
-          cursor: 'pointer',
-          display: 'inline-flex',
-          alignItems: 'center',
-          gap: '8px',
-          fontSize: '15px',
-          transition: 'all 0.2s',
-        }}
-        onMouseEnter={(e) => { e.currentTarget.style.transform = 'scale(1.05)'; e.currentTarget.style.boxShadow = '0 20px 30px -5px rgba(79,70,229,0.5)'; }}
-        onMouseLeave={(e) => { e.currentTarget.style.transform = 'scale(1)'; e.currentTarget.style.boxShadow = '0 10px 25px -5px rgba(79,70,229,0.4)'; }}
+        className="mt-6 bg-gradient-to-r from-indigo-600 to-purple-600 text-white px-8 py-3 rounded-xl font-medium shadow-md hover:shadow-lg hover:scale-105 transition-all duration-200 flex items-center gap-2"
       >
         <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
@@ -173,8 +131,8 @@ export default function QRDisplay({ client }: { client: Client }) {
       </button>
 
       {client.google_review_link && (
-        <div style={{ marginTop: '10px', fontSize: '12px', color: '#9ca3af', textAlign: 'center', maxWidth: '280px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-          <span style={{ fontWeight: 500 }}>Review link:</span> {client.google_review_link}
+        <div className="mt-3 text-xs text-gray-400 text-center max-w-xs truncate">
+          <span className="font-medium">Review link:</span> {client.google_review_link}
         </div>
       )}
     </div>

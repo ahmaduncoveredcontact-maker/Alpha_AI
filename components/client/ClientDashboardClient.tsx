@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { useTheme } from './ThemeContext';
 import Sidebar from './Sidebar';
 import DashboardOverview from './DashboardOverview';
@@ -56,6 +57,7 @@ export default function ClientDashboardClient({
   totalCalls: number;
   bookings: number;
 }) {
+  const router = useRouter();
   const { theme, toggleTheme } = useTheme();
   const [activeTab, setActiveTab] = useState('dashboard');
   const [calls, setCalls] = useState<CallLog[]>(initialCalls);
@@ -72,6 +74,23 @@ export default function ClientDashboardClient({
     booked_time: '',
     address: '',
   });
+
+  // Handle navigation with replace to fix back button behavior
+  const handleNavigate = (tab: string) => {
+    setActiveTab(tab);
+    // Replace the current URL with the tab as a hash, so back goes to previous tab
+    const url = `/live/${client.slug}?tab=${tab}`;
+    router.replace(url, { scroll: false });
+  };
+
+  // On mount, check for tab in URL
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const tab = params.get('tab');
+    if (tab && navItems.some(item => item.id === tab)) {
+      setActiveTab(tab);
+    }
+  }, []);
 
   const refreshCalls = async () => {
     const res = await fetch(`/api/client/${client.slug}/calls`, { credentials: 'include' });
@@ -146,6 +165,15 @@ export default function ClientDashboardClient({
     }
   };
 
+  const navItems = [
+    { id: 'dashboard', label: 'Dashboard' },
+    { id: 'qr-code', label: 'QR Code' },
+    { id: 'appointments', label: 'Appointments' },
+    { id: 'calls', label: 'Call Log' },
+    { id: 'schedule', label: 'Schedule' },
+    { id: 'settings', label: 'Settings' },
+  ];
+
   const renderContent = () => {
     switch (activeTab) {
       case 'dashboard':
@@ -154,7 +182,7 @@ export default function ClientDashboardClient({
             client={client}
             totalCalls={totalCalls}
             bookings={bookings}
-            onNavigate={setActiveTab}
+            onNavigate={handleNavigate}
           />
         );
       case 'qr-code':
@@ -186,21 +214,21 @@ export default function ClientDashboardClient({
           />
         );
       default:
-        return <DashboardOverview client={client} totalCalls={totalCalls} bookings={bookings} onNavigate={setActiveTab} />;
+        return <DashboardOverview client={client} totalCalls={totalCalls} bookings={bookings} onNavigate={handleNavigate} />;
     }
   };
 
   return (
-    <div className="flex min-h-screen bg-gray-50 dark:bg-gray-950">
+    <div className="flex min-h-screen bg-gray-50 dark:bg-gray-950 pt-[64px] lg:pt-0">
       <Sidebar
         activeTab={activeTab}
-        setActiveTab={setActiveTab}
+        setActiveTab={handleNavigate}
         theme={theme}
         toggleTheme={toggleTheme}
         businessName={client.business_name}
       />
 
-      <main className="flex-1 p-4 sm:p-6 lg:p-8 overflow-y-auto w-full">
+      <main className="flex-1 p-4 sm:p-6 lg:p-8 overflow-y-auto w-full mt-4 lg:mt-0">
         {renderContent()}
       </main>
 
