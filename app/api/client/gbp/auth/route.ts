@@ -1,0 +1,28 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { cookies } from 'next/headers';
+
+export async function GET(req: NextRequest) {
+  const searchParams = req.nextUrl.searchParams;
+  const slug = searchParams.get('slug');
+
+  if (!slug) {
+    return NextResponse.json({ error: 'Missing slug' }, { status: 400 });
+  }
+
+  // Store the slug in a cookie to retrieve after OAuth callback
+  const cookieStore = await cookies();
+  cookieStore.set('gbp_oauth_slug', slug, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    maxAge: 60 * 10, // 10 minutes
+    path: '/',
+  });
+
+  const clientId = process.env.GOOGLE_CLIENT_ID;
+  const redirectUri = process.env.GOOGLE_REDIRECT_URI || `${process.env.NEXT_PUBLIC_BASE_URL}/api/client/gbp/callback`;
+  const scope = 'https://www.googleapis.com/auth/business.manage';
+
+  const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${clientId}&redirect_uri=${redirectUri}&response_type=code&scope=${scope}&access_type=offline&prompt=consent`;
+
+  return NextResponse.redirect(authUrl);
+}

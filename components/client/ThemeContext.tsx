@@ -18,10 +18,10 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     const stored = localStorage.getItem('alpha_theme') as Theme | null;
     if (stored) {
       setTheme(stored);
-      document.documentElement.className = stored;
+      document.documentElement.classList.add(stored);
     } else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
       setTheme('dark');
-      document.documentElement.className = 'dark';
+      document.documentElement.classList.add('dark');
     }
   }, []);
 
@@ -29,7 +29,8 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     const newTheme = theme === 'light' ? 'dark' : 'light';
     setTheme(newTheme);
     localStorage.setItem('alpha_theme', newTheme);
-    document.documentElement.className = newTheme;
+    document.documentElement.classList.remove('light', 'dark');
+    document.documentElement.classList.add(newTheme);
   };
 
   return (
