@@ -1,6 +1,6 @@
 'use client';
 
-import { Phone, Calendar, Star, CheckCircle, XCircle, ExternalLink } from 'lucide-react';
+import { Phone, Calendar, Star, CheckCircle, XCircle } from 'lucide-react';
 
 interface Client {
   id: string;
@@ -16,12 +16,21 @@ export default function DashboardOverview({
   client,
   totalCalls,
   bookings,
+  onNavigate,
 }: {
   client: Client;
   totalCalls: number;
   bookings: number;
+  onNavigate: (tab: string) => void;
 }) {
   const isGbpConnected = !!client.gbp_access_token;
+
+  const quickActions = [
+    { id: 'qr-code', label: 'QR Code', emoji: '📱', color: 'border-blue-300 dark:border-blue-700 hover:border-blue-400' },
+    { id: 'appointments', label: 'Appointments', emoji: '📅', color: 'border-green-300 dark:border-green-700 hover:border-green-400' },
+    { id: 'calls', label: 'Call Log', emoji: '📞', color: 'border-purple-300 dark:border-purple-700 hover:border-purple-400' },
+    { id: 'schedule', label: 'Schedule', emoji: '⏰', color: 'border-orange-300 dark:border-orange-700 hover:border-orange-400' },
+  ];
 
   return (
     <div className="space-y-6">
@@ -113,36 +122,18 @@ export default function DashboardOverview({
         </div>
       </div>
 
-      {/* Quick Action Cards */}
+      {/* Quick Action Cards - clickable */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        <a
-          href="#qr-code"
-          className="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-100 dark:border-gray-700 text-center hover:shadow-md transition-shadow hover:border-blue-300 dark:hover:border-blue-700"
-        >
-          <div className="text-2xl mb-1">📱</div>
-          <p className="text-sm font-medium text-gray-700 dark:text-gray-300">QR Code</p>
-        </a>
-        <a
-          href="#appointments"
-          className="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-100 dark:border-gray-700 text-center hover:shadow-md transition-shadow hover:border-green-300 dark:hover:border-green-700"
-        >
-          <div className="text-2xl mb-1">📅</div>
-          <p className="text-sm font-medium text-gray-700 dark:text-gray-300">Appointments</p>
-        </a>
-        <a
-          href="#calls"
-          className="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-100 dark:border-gray-700 text-center hover:shadow-md transition-shadow hover:border-blue-300 dark:hover:border-blue-700"
-        >
-          <div className="text-2xl mb-1">📞</div>
-          <p className="text-sm font-medium text-gray-700 dark:text-gray-300">Call Log</p>
-        </a>
-        <a
-          href="#schedule"
-          className="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-100 dark:border-gray-700 text-center hover:shadow-md transition-shadow hover:border-purple-300 dark:hover:border-purple-700"
-        >
-          <div className="text-2xl mb-1">⏰</div>
-          <p className="text-sm font-medium text-gray-700 dark:text-gray-300">Schedule</p>
-        </a>
+        {quickActions.map((action) => (
+          <button
+            key={action.id}
+            onClick={() => onNavigate(action.id)}
+            className={`bg-white dark:bg-gray-800 rounded-xl p-4 border-2 ${action.color} text-center hover:shadow-md transition-shadow hover:-translate-y-0.5`}
+          >
+            <div className="text-2xl mb-1">{action.emoji}</div>
+            <p className="text-sm font-medium text-gray-700 dark:text-gray-300">{action.label}</p>
+          </button>
+        ))}
       </div>
     </div>
   );

@@ -9,7 +9,7 @@ import AppointmentsPage from './AppointmentsPage';
 import CallLogPage from './CallLogPage';
 import SchedulePage from './SchedulePage';
 import SettingsPage from './SettingsPage';
-import { X } from 'lucide-react'; // ✅ ADDED X
+import { X } from 'lucide-react';
 
 interface CallLog {
   _row: number;
@@ -154,6 +154,7 @@ export default function ClientDashboardClient({
             client={client}
             totalCalls={totalCalls}
             bookings={bookings}
+            onNavigate={setActiveTab}
           />
         );
       case 'qr-code':
@@ -185,7 +186,7 @@ export default function ClientDashboardClient({
           />
         );
       default:
-        return <DashboardOverview client={client} totalCalls={totalCalls} bookings={bookings} />;
+        return <DashboardOverview client={client} totalCalls={totalCalls} bookings={bookings} onNavigate={setActiveTab} />;
     }
   };
 
@@ -199,14 +200,14 @@ export default function ClientDashboardClient({
         businessName={client.business_name}
       />
 
-      <main className="flex-1 p-8 overflow-y-auto">
+      <main className="flex-1 p-4 sm:p-6 lg:p-8 overflow-y-auto w-full">
         {renderContent()}
       </main>
 
       {/* Edit Modal */}
       {editModalOpen && editingCall && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-md w-full p-6 relative">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-md w-full p-6 relative max-h-[90vh] overflow-y-auto">
             <button
               onClick={() => setEditModalOpen(false)}
               className="absolute -top-3 -right-3 bg-white dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-full p-2 shadow-lg transition-colors z-10 border border-gray-200 dark:border-gray-600"
@@ -214,7 +215,7 @@ export default function ClientDashboardClient({
               <X className="w-5 h-5" />
             </button>
             <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">Edit Call Log</h3>
-            <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-1">
+            <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Customer Name</label>
                 <input
