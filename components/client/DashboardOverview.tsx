@@ -1,0 +1,149 @@
+'use client';
+
+import { Phone, Calendar, Star, CheckCircle, XCircle, ExternalLink } from 'lucide-react';
+
+interface Client {
+  id: string;
+  business_name: string;
+  slug: string;
+  delivery_address?: string;
+  google_review_link?: string;
+  webhook_url: string;
+  gbp_access_token?: string;
+}
+
+export default function DashboardOverview({
+  client,
+  totalCalls,
+  bookings,
+}: {
+  client: Client;
+  totalCalls: number;
+  bookings: number;
+}) {
+  const isGbpConnected = !!client.gbp_access_token;
+
+  return (
+    <div className="space-y-6">
+      {/* Stats Grid */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 border border-gray-100 dark:border-gray-700">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-gray-500 dark:text-gray-400">Total Calls</p>
+              <p className="text-2xl font-bold text-gray-900 dark:text-white">{totalCalls}</p>
+              <p className="text-xs text-gray-400 dark:text-gray-500">this week</p>
+            </div>
+            <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-xl">
+              <Phone className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 border border-gray-100 dark:border-gray-700">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-gray-500 dark:text-gray-400">Bookings</p>
+              <p className="text-2xl font-bold text-gray-900 dark:text-white">{bookings}</p>
+              <p className="text-xs text-gray-400 dark:text-gray-500">confirmed</p>
+            </div>
+            <div className="p-3 bg-green-50 dark:bg-green-900/20 rounded-xl">
+              <Calendar className="w-6 h-6 text-green-600 dark:text-green-400" />
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 border border-gray-100 dark:border-gray-700">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-gray-500 dark:text-gray-400">Review Replies</p>
+              <p className="text-2xl font-bold text-gray-900 dark:text-white">0</p>
+              <p className="text-xs text-gray-400 dark:text-gray-500">auto-responded</p>
+            </div>
+            <div className="p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded-xl">
+              <Star className="w-6 h-6 text-yellow-600 dark:text-yellow-400" />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* GBP Connection Card */}
+      <div className={`rounded-xl p-5 border ${
+        isGbpConnected 
+          ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-700' 
+          : 'bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-700'
+      }`}>
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div className="flex items-start gap-3">
+            {isGbpConnected ? (
+              <CheckCircle className="w-6 h-6 text-green-600 dark:text-green-400 mt-0.5 flex-shrink-0" />
+            ) : (
+              <XCircle className="w-6 h-6 text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0" />
+            )}
+            <div>
+              <h3 className={`font-semibold ${
+                isGbpConnected 
+                  ? 'text-green-800 dark:text-green-300' 
+                  : 'text-amber-800 dark:text-amber-300'
+              }`}>
+                {isGbpConnected ? '✅ Auto-Responder Active' : '⚡ Enable Auto Google Review Responder'}
+              </h3>
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                {isGbpConnected 
+                  ? '5-star reviews will be automatically replied to boost your Google ranking.'
+                  : 'Sign in with your Google Business Profile to automatically reply to 5-star reviews.'
+                }
+              </p>
+            </div>
+          </div>
+          {!isGbpConnected && (
+            <a
+              href={`/api/client/gbp/auth?slug=${client.slug}`}
+              className="inline-flex items-center gap-2 bg-[#4285F4] hover:bg-[#3367D6] text-white px-5 py-2.5 rounded-lg font-medium transition shadow-sm flex-shrink-0"
+            >
+              <svg className="w-5 h-5" viewBox="0 0 24 24" fill="white">
+                <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 01-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z"/>
+                <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+              </svg>
+              Sign in with Google
+            </a>
+          )}
+        </div>
+      </div>
+
+      {/* Quick Action Cards */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+        <a
+          href="#qr-code"
+          className="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-100 dark:border-gray-700 text-center hover:shadow-md transition-shadow hover:border-blue-300 dark:hover:border-blue-700"
+        >
+          <div className="text-2xl mb-1">📱</div>
+          <p className="text-sm font-medium text-gray-700 dark:text-gray-300">QR Code</p>
+        </a>
+        <a
+          href="#appointments"
+          className="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-100 dark:border-gray-700 text-center hover:shadow-md transition-shadow hover:border-green-300 dark:hover:border-green-700"
+        >
+          <div className="text-2xl mb-1">📅</div>
+          <p className="text-sm font-medium text-gray-700 dark:text-gray-300">Appointments</p>
+        </a>
+        <a
+          href="#calls"
+          className="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-100 dark:border-gray-700 text-center hover:shadow-md transition-shadow hover:border-blue-300 dark:hover:border-blue-700"
+        >
+          <div className="text-2xl mb-1">📞</div>
+          <p className="text-sm font-medium text-gray-700 dark:text-gray-300">Call Log</p>
+        </a>
+        <a
+          href="#schedule"
+          className="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-100 dark:border-gray-700 text-center hover:shadow-md transition-shadow hover:border-purple-300 dark:hover:border-purple-700"
+        >
+          <div className="text-2xl mb-1">⏰</div>
+          <p className="text-sm font-medium text-gray-700 dark:text-gray-300">Schedule</p>
+        </a>
+      </div>
+    </div>
+  );
+}

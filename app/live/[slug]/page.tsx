@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server';
 import { notFound } from 'next/navigation';
 import { getWeekRange } from '@/lib/utils/dateHelpers';
+import { ThemeProvider } from '@/components/client/ThemeContext';
 import ClientDashboardClient from '@/components/client/ClientDashboardClient';
 
 export default async function ClientDashboardPage({ params }: { params: { slug: string } }) {
@@ -29,16 +30,16 @@ export default async function ClientDashboardPage({ params }: { params: { slug: 
     return date >= start && date <= end;
   });
   const totalCalls = weekCalls.length;
-
-  // ✅ Count bookings based on presence of booked_time (not only status)
   const bookings = weekCalls.filter((c: any) => c.booked_time && c.booked_time !== '').length;
 
   return (
-    <ClientDashboardClient
-      client={client}
-      initialCalls={calls}
-      totalCalls={totalCalls}
-      bookings={bookings}
-    />
+    <ThemeProvider>
+      <ClientDashboardClient
+        client={client}
+        initialCalls={calls}
+        totalCalls={totalCalls}
+        bookings={bookings}
+      />
+    </ThemeProvider>
   );
 }

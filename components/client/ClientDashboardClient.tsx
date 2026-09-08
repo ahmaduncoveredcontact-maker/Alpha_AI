@@ -1,10 +1,14 @@
 'use client';
 
-import { useState, useMemo, useEffect } from 'react';
-import QRDisplay from './QRDisplay';
-import { Phone, Calendar, Star, Clock, Download, X, Filter, Copy, Edit, Trash2 } from 'lucide-react';
-import WeekScheduleView from './WeekScheduleView';
-import { TIMEZONES } from '@/lib/constants/timezones';
+import { useState, useEffect } from 'react';
+import { useTheme } from './ThemeContext';
+import Sidebar from './Sidebar';
+import DashboardOverview from './DashboardOverview';
+import QRCodePage from './QRCodePage';
+import AppointmentsPage from './AppointmentsPage';
+import CallLogPage from './CallLogPage';
+import SchedulePage from './SchedulePage';
+import SettingsPage from './SettingsPage';
 
 interface CallLog {
   _row: number;
@@ -36,26 +40,9 @@ interface Client {
   working_days?: string[];
   timezone?: string;
   cal_event_slug?: string;
-  // NEW: Per-day times
-  day_times?: {
-    [key: string]: {
-      start: string;
-      end: string;
-    };
-  };
+  day_times?: { [key: string]: { start: string; end: string } };
+  gbp_access_token?: string;
 }
-
-const statusColors: Record<string, string> = {
-  'Booked': 'bg-[#34A853]/10 text-[#34A853]',
-  'Emergency': 'bg-[#EA4335]/20 text-[#EA4335]',
-  'General Inquiry': 'bg-[#4285F4]/10 text-[#4285F4]',
-  'Rate Limited': 'bg-[#EA4335]/10 text-[#EA4335]',
-  'New Patient': 'bg-[#FBBC05]/20 text-[#FBBC05]',
-  'Follow-up': 'bg-[#8B5CF6]/20 text-[#8B5CF6]',
-  'No Answer': 'bg-gray-200 text-gray-600',
-  'Voicemail': 'bg-gray-200 text-gray-600',
-  'default': 'bg-gray-100 text-gray-600',
-};
 
 export default function ClientDashboardClient({
   client,
@@ -68,12 +55,10 @@ export default function ClientDashboardClient({
   totalCalls: number;
   bookings: number;
 }) {
+  const { theme, toggleTheme } = useTheme();
+  const [activeTab, setActiveTab] = useState('dashboard');
   const [calls, setCalls] = useState<CallLog[]>(initialCalls);
-  const [isQRModalOpen, setIsQRModalOpen] = useState(false);
-  const [typeFilter, setTypeFilter] = useState('all');
-  const [statusFilter, setStatusFilter] = useState('all');
-  const [dateFrom, setDateFrom] = useState('');
-  const [dateTo, setDateTo] = useState('');
+  const [savingSchedule, setSavingSchedule] = useState(false);
 
   // Edit modal state
   const [editModalOpen, setEditModalOpen] = useState(false);
@@ -87,26 +72,8 @@ export default function ClientDashboardClient({
     address: '',
   });
 
-  // Schedule state
-  const [savingSchedule, setSavingSchedule] = useState(false);
-  const [scheduleMessage, setScheduleMessage] = useState('');
-  
-  // Per-day time state
-  const [dayTimes, setDayTimes] = useState<{ [key: string]: { start: string; end: string } }>(
-    client.day_times || {}
-  );
-  
-  const [scheduleData, setScheduleData] = useState({
-    working_days: client.working_days || ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'],
-    working_hours_start: client.working_hours_start || '09:00',
-    working_hours_end: client.working_hours_end || '17:00',
-    timezone: client.timezone || 'America/New_York',
-  });
-
   const refreshCalls = async () => {
-    const res = await fetch(`/api/client/${client.slug}/calls`, {
-      credentials: 'include',
-    });
+    const res = await fetch(`/api/client/${client.slug}/calls`, { credentials: 'include' });
     if (res.ok) {
       const data = await res.json();
       setCalls(data);
@@ -115,7 +82,6 @@ export default function ClientDashboardClient({
 
   const updateSchedule = async (data: any) => {
     setSavingSchedule(true);
-    setScheduleMessage('');
     try {
       const res = await fetch(`/api/client/${client.slug}/schedule`, {
         method: 'PUT',
@@ -124,106 +90,13 @@ export default function ClientDashboardClient({
         body: JSON.stringify(data),
       });
       if (res.ok) {
-        const result = await res.json();
-        setScheduleMessage('✅ Schedule updated successfully!');
-        setScheduleData({
-          working_days: data.working_days || scheduleData.working_days,
-          working_hours_start: data.working_hours_start || scheduleData.working_hours_start,
-          working_hours_end: data.working_hours_end || scheduleData.working_hours_end,
-          timezone: data.timezone || scheduleData.timezone,
-        });
-        if (data.day_times) {
-          setDayTimes(data.day_times);
-        }
-        setTimeout(() => window.location.reload(), 1000);
-      } else {
-        const err = await res.json();
-        setScheduleMessage(`❌ ${err.error || 'Update failed'}`);
+        await refreshCalls();
       }
-    } catch (err: any) {
-      setScheduleMessage(`❌ ${err.message}`);
+    } catch (err) {
+      console.error('Schedule update failed:', err);
     } finally {
       setSavingSchedule(false);
     }
-  };
-
-  // Handler for per-day time changes
-  const handleDayTimeChange = (day: string, start: string, end: string) => {
-    const updatedDayTimes = {
-      ...dayTimes,
-      [day]: { start, end },
-    };
-    setDayTimes(updatedDayTimes);
-    updateSchedule({
-      working_days: scheduleData.working_days,
-      working_hours_start: scheduleData.working_hours_start,
-      working_hours_end: scheduleData.working_hours_end,
-      timezone: scheduleData.timezone,
-      day_times: updatedDayTimes,
-    });
-  };
-
-  useEffect(() => {
-    setCalls(initialCalls);
-  }, [initialCalls]);
-
-  const uniqueStatuses = useMemo(() => {
-    const statusSet = new Set<string>();
-    calls.forEach((call) => {
-      if (call.status) statusSet.add(call.status);
-    });
-    return Array.from(statusSet).sort();
-  }, [calls]);
-
-  const dedupedCalls = useMemo(() => {
-    const seen = new Set<string>();
-    return calls.filter((call) => {
-      let key = call.call_id;
-      if (!key) {
-        const date = new Date(call.timestamp);
-        const rounded = new Date(date.getFullYear(), date.getMonth(), date.getDate(), date.getHours(), date.getMinutes());
-        key = `${rounded.toISOString()}_${call.customer_phone}`;
-      }
-      if (seen.has(key)) return false;
-      seen.add(key);
-      return true;
-    });
-  }, [calls]);
-
-  const filteredCalls = useMemo(() => {
-    return dedupedCalls.filter((call) => {
-      const matchType = typeFilter === 'all' || call.call_type === typeFilter;
-      const matchStatus = statusFilter === 'all' || call.status === statusFilter;
-      const callDate = new Date(call.timestamp).toISOString().split('T')[0];
-      const matchFrom = !dateFrom || callDate >= dateFrom;
-      const matchTo = !dateTo || callDate <= dateTo;
-      return matchType && matchStatus && matchFrom && matchTo;
-    });
-  }, [dedupedCalls, typeFilter, statusFilter, dateFrom, dateTo]);
-
-  const exportCSV = () => {
-    if (filteredCalls.length === 0) {
-      alert('No calls to export with current filters.');
-      return;
-    }
-    const headers = ['Time', 'Type', 'Customer', 'Phone', 'Summary', 'Status', 'Booked Time', 'Recording URL', 'Address'];
-    const rows = filteredCalls.map((call) => [
-      new Date(call.timestamp).toLocaleString(),
-      call.call_type,
-      call.customer_name,
-      call.customer_phone,
-      call.summary,
-      call.status,
-      call.booked_time || '',
-      call.recording_url || '',
-      call.address || '',
-    ]);
-    const csvContent = [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    link.href = URL.createObjectURL(blob);
-    link.download = 'calls_export.csv';
-    link.click();
   };
 
   const handleEdit = (call: CallLog) => {
@@ -272,459 +145,108 @@ export default function ClientDashboardClient({
     }
   };
 
-  const GooglePill = () => (
-    <span
-      className="w-1.5 h-6 rounded-full inline-block"
-      style={{ background: 'linear-gradient(180deg, #4285F4 0%, #EA4335 33%, #FBBC05 66%, #34A853 100%)' }}
-    />
-  );
+  const renderContent = () => {
+    switch (activeTab) {
+      case 'dashboard':
+        return (
+          <DashboardOverview
+            client={client}
+            totalCalls={totalCalls}
+            bookings={bookings}
+          />
+        );
+      case 'qr-code':
+        return <QRCodePage client={client} />;
+      case 'appointments':
+        return <AppointmentsPage calls={calls} />;
+      case 'calls':
+        return (
+          <CallLogPage
+            calls={calls}
+            onEdit={handleEdit}
+            onDelete={handleDelete}
+          />
+        );
+      case 'schedule':
+        return (
+          <SchedulePage
+            client={client}
+            onUpdate={updateSchedule}
+            saving={savingSchedule}
+          />
+        );
+      case 'settings':
+        return (
+          <SettingsPage
+            webhookUrl={client.webhook_url}
+            businessName={client.business_name}
+            slug={client.slug}
+          />
+        );
+      default:
+        return <DashboardOverview client={client} totalCalls={totalCalls} bookings={bookings} />;
+    }
+  };
 
   return (
-    <div className="min-h-screen bg-gray-50/50">
-      {/* Header */}
-      <header className="bg-white shadow-sm relative">
-        <div 
-          className="absolute top-0 left-0 w-full h-1" 
-          style={{ background: 'linear-gradient(90deg, #4285F4 0%, #4285F4 25%, #EA4335 25%, #EA4335 50%, #FBBC05 50%, #FBBC05 75%, #34A853 75%, #34A853 100%)' }}
-        />
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 pt-8">
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between">
-            <div>
-              <h1 className="text-3xl font-bold tracking-tight text-gray-900">Welcome, {client.business_name}</h1>
-              <p className="text-gray-500 text-sm mt-1">Your AI receptionist dashboard</p>
-            </div>
-            <div className="mt-3 md:mt-0 text-sm text-gray-400 flex items-center space-x-2 bg-gray-50 px-4 py-2 rounded-full border border-gray-100">
-              <Clock className="w-4 h-4 text-[#4285F4]" />
-              <span>Updated {new Date().toLocaleString()}</span>
-            </div>
-          </div>
-        </div>
-      </header>
+    <div className="flex min-h-screen bg-gray-50 dark:bg-gray-950">
+      <Sidebar
+        activeTab={activeTab}
+        setActiveTab={setActiveTab}
+        theme={theme}
+        toggleTheme={toggleTheme}
+        businessName={client.business_name}
+      />
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* NFC Banner */}
-        <div className="bg-white border-l-4 rounded-xl p-4 mb-8 text-sm text-gray-700 shadow-sm flex items-center justify-between flex-wrap gap-2" style={{ borderLeftColor: '#4285F4' }}>
-          <span className="flex items-center gap-2">
-            <span className="text-lg">📦</span> 
-            <span><strong>NFC card</strong> will be delivered to your provided address:</span>
-            <span className="font-mono bg-gray-50 text-[#4285F4] px-2 py-0.5 rounded border border-gray-200 ml-1">
-              {client.delivery_address || 'Not provided'}
-            </span>
-          </span>
-        </div>
-
-        {/* Stats */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-8">
-          <div className="bg-white rounded-2xl shadow-sm hover:shadow-md transition-shadow duration-300 p-6 border border-gray-100 flex items-center space-x-5 group">
-            <div className="p-4 rounded-2xl transition-transform group-hover:scale-110" style={{ backgroundColor: 'rgba(66, 133, 244, 0.1)' }}>
-              <Phone className="w-7 h-7" style={{ color: '#4285F4' }} />
-            </div>
-            <div>
-              <div className="text-sm text-gray-500 font-medium mb-1">Total Calls</div>
-              <div className="text-3xl font-bold text-gray-900 leading-none">{totalCalls}</div>
-              <div className="text-xs text-gray-400 mt-1">this week</div>
-            </div>
-          </div>
-          
-          <div className="bg-white rounded-2xl shadow-sm hover:shadow-md transition-shadow duration-300 p-6 border border-gray-100 flex items-center space-x-5 group">
-            <div className="p-4 rounded-2xl transition-transform group-hover:scale-110" style={{ backgroundColor: 'rgba(52, 168, 83, 0.1)' }}>
-              <Calendar className="w-7 h-7" style={{ color: '#34A853' }} />
-            </div>
-            <div>
-              <div className="text-sm text-gray-500 font-medium mb-1">Bookings</div>
-              <div className="text-3xl font-bold text-gray-900 leading-none">{bookings}</div>
-              <div className="text-xs text-gray-400 mt-1">confirmed</div>
-            </div>
-          </div>
-          
-          <div className="bg-white rounded-2xl shadow-sm hover:shadow-md transition-shadow duration-300 p-6 border border-gray-100 flex items-center space-x-5 group">
-            <div className="p-4 rounded-2xl transition-transform group-hover:scale-110" style={{ backgroundColor: 'rgba(251, 188, 5, 0.15)' }}>
-              <Star className="w-7 h-7" style={{ color: '#FBBC05' }} />
-            </div>
-            <div>
-              <div className="text-sm text-gray-500 font-medium mb-1">Review Replies</div>
-              <div className="text-3xl font-bold text-gray-900 leading-none">0</div>
-              <div className="text-xs text-gray-400 mt-1">auto‑responded</div>
-            </div>
-          </div>
-        </div>
-
-        {/* ===== MY SCHEDULE SECTION ===== */}
-        <div className="bg-white rounded-2xl shadow-sm overflow-hidden border border-gray-100 mb-8">
-          <div className="px-6 py-4 border-b border-gray-100 bg-gray-50">
-            <h2 className="text-xl font-semibold text-gray-800 flex items-center gap-2">
-              <GooglePill />
-              My Weekly Schedule
-            </h2>
-          </div>
-          <div className="p-6">
-            <WeekScheduleView
-              working_days={scheduleData.working_days}
-              working_hours_start={scheduleData.working_hours_start}
-              working_hours_end={scheduleData.working_hours_end}
-              onDayToggle={(day) => {
-                const currentDays = scheduleData.working_days || [];
-                const updated = currentDays.includes(day)
-                  ? currentDays.filter(d => d !== day)
-                  : [...currentDays, day];
-                updateSchedule({
-                  working_days: updated,
-                  working_hours_start: scheduleData.working_hours_start,
-                  working_hours_end: scheduleData.working_hours_end,
-                  timezone: scheduleData.timezone,
-                  day_times: dayTimes,
-                });
-              }}
-              onHoursChange={(start, end) => {
-                updateSchedule({
-                  working_days: scheduleData.working_days,
-                  working_hours_start: start,
-                  working_hours_end: end,
-                  timezone: scheduleData.timezone,
-                  day_times: dayTimes,
-                });
-              }}
-              onDayTimeChange={handleDayTimeChange}
-              dayTimes={dayTimes}
-            />
-
-            <div className="mt-4">
-              <label className="block text-sm font-medium text-gray-700">Timezone</label>
-              <select
-                value={scheduleData.timezone || 'America/New_York'}
-                onChange={(e) => updateSchedule({
-                  working_days: scheduleData.working_days,
-                  working_hours_start: scheduleData.working_hours_start,
-                  working_hours_end: scheduleData.working_hours_end,
-                  timezone: e.target.value,
-                  day_times: dayTimes,
-                })}
-                className="mt-1 w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-[#4285F4] outline-none transition"
-              >
-                {TIMEZONES.map((tz) => (
-                  <option key={tz.value} value={tz.value}>
-                    {tz.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {scheduleMessage && (
-              <div className={`mt-4 text-sm px-4 py-2 rounded-lg ${
-                scheduleMessage.includes('✅') 
-                  ? 'bg-green-50 text-green-700 border border-green-200' 
-                  : 'bg-red-50 text-red-600 border border-red-200'
-              }`}>
-                {scheduleMessage}
-              </div>
-            )}
-
-            {client.cal_event_slug && (
-              <div className="mt-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
-                <p className="text-sm text-blue-700">
-                  <span className="font-medium">Booking Link:</span>{' '}
-                  <a 
-                    href={`https://cal.com/${process.env.NEXT_PUBLIC_CAL_USERNAME || 'alphaai'}/${client.cal_event_slug}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="underline"
-                  >
-                    https://cal.com/alphaai/{client.cal_event_slug}
-                  </a>
-                </p>
-                <p className="text-xs text-blue-500 mt-1">
-                  To change availability, holidays, or buffer time, open this link and edit the event type.
-                </p>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* QR Code Trigger & Webhook URL */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
-          <div className="lg:col-span-1 bg-white rounded-2xl shadow-sm hover:shadow-md transition-shadow p-8 border border-gray-100 flex flex-col items-center justify-center text-center relative overflow-hidden group">
-            <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-bl from-blue-50 to-transparent rounded-bl-full -z-10 transition-transform group-hover:scale-110"></div>
-            <h3 className="font-semibold text-gray-800 mb-2 flex items-center gap-2">
-              <GooglePill />
-              Google Review Card
-            </h3>
-            <p className="text-sm text-gray-500 mb-6">Preview and download your custom NFC & QR code design.</p>
-            <button
-              onClick={() => setIsQRModalOpen(true)}
-              style={{ backgroundColor: '#4285F4' }}
-              className="inline-flex items-center gap-2 text-white px-8 py-3.5 rounded-xl font-medium shadow-md hover:opacity-90 hover:shadow-lg transition-all duration-200 transform hover:-translate-y-0.5"
-            >
-              <span className="text-xl">📱</span> View QR Card
-            </button>
-          </div>
-
-          <div className="lg:col-span-2 bg-white rounded-2xl shadow-sm p-6 border border-gray-100 flex flex-col justify-center">
-            <h3 className="font-semibold text-gray-800 mb-2 flex items-center gap-2">
-              <GooglePill />
-              Your Webhook URL
-            </h3>
-            <p className="text-sm text-gray-500 mb-4">Paste this URL into your website contact form to receive leads instantly.</p>
-            <div className="flex items-center space-x-2">
-              <code className="bg-gray-50 border border-gray-200 p-3 rounded-xl flex-1 text-sm break-all font-mono text-gray-600 shadow-inner">
-                {client.webhook_url}
-              </code>
-              <button
-                onClick={() => {
-                  navigator.clipboard.writeText(client.webhook_url);
-                  alert('Copied to clipboard!');
-                }}
-                className="bg-gray-900 text-white p-3 rounded-xl hover:bg-gray-800 transition shadow-sm flex items-center gap-2"
-                title="Copy Webhook"
-              >
-                <Copy className="w-5 h-5" />
-                <span className="hidden sm:inline text-sm font-medium">Copy</span>
-              </button>
-            </div>
-          </div>
-        </div>
-
-        {/* Call Log */}
-        <div className="bg-white rounded-2xl shadow-sm overflow-hidden border border-gray-100">
-          <div className="px-6 py-5 border-b border-gray-100 flex flex-wrap items-center justify-between gap-4 bg-white">
-            <h2 className="text-xl font-semibold text-gray-800 flex items-center gap-2">
-              <GooglePill />
-              Recent Calls
-            </h2>
-            <div className="flex flex-wrap items-center gap-3">
-              <div className="flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-lg p-1">
-                <Filter className="w-4 h-4 text-gray-400 ml-2" />
-                <select
-                  value={typeFilter}
-                  onChange={(e) => setTypeFilter(e.target.value)}
-                  className="text-sm bg-transparent border-none focus:ring-0 text-gray-600 cursor-pointer outline-none"
-                >
-                  <option value="all">All Types</option>
-                  <option value="inbound">Inbound</option>
-                  <option value="outbound">Outbound</option>
-                </select>
-              </div>
-
-              <select
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
-                className="text-sm border border-gray-200 bg-gray-50 rounded-lg px-3 py-2 text-gray-600 focus:ring-2 focus:ring-[#4285F4] outline-none transition"
-              >
-                <option value="all">All Status</option>
-                {uniqueStatuses.map((status) => (
-                  <option key={status} value={status}>{status}</option>
-                ))}
-              </select>
-
-              <div className="flex items-center gap-2 border border-gray-200 bg-gray-50 rounded-lg px-2">
-                <input
-                  type="date"
-                  value={dateFrom}
-                  onChange={(e) => setDateFrom(e.target.value)}
-                  className="text-sm bg-transparent border-none py-2 text-gray-600 focus:ring-0 outline-none"
-                />
-                <span className="text-gray-300">→</span>
-                <input
-                  type="date"
-                  value={dateTo}
-                  onChange={(e) => setDateTo(e.target.value)}
-                  className="text-sm bg-transparent border-none py-2 text-gray-600 focus:ring-0 outline-none"
-                />
-              </div>
-
-              <button
-                onClick={exportCSV}
-                style={{ backgroundColor: '#34A853' }}
-                className="inline-flex items-center gap-1.5 text-white text-sm font-medium px-5 py-2.5 rounded-lg shadow-sm hover:opacity-90 transition-all"
-              >
-                <Download className="w-4 h-4" /> Export CSV
-              </button>
-            </div>
-          </div>
-
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="bg-gray-50/80 text-gray-500 font-medium border-b border-gray-100">
-                <tr>
-                  <th className="px-6 py-4 text-left">Time</th>
-                  <th className="px-6 py-4 text-left">Type</th>
-                  <th className="px-6 py-4 text-left">Customer</th>
-                  <th className="px-6 py-4 text-left">Summary</th>
-                  <th className="px-6 py-4 text-left">Status</th>
-                  <th className="px-6 py-4 text-left">Booked Time</th>
-                  <th className="px-6 py-4 text-left">Recording</th>
-                  <th className="px-6 py-4 text-left">Address</th>
-                  <th className="px-6 py-4 text-left">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-50">
-                {filteredCalls.length === 0 ? (
-                  <tr>
-                    <td colSpan={9} className="px-6 py-12 text-center text-gray-400 bg-gray-50/30">
-                      No calls match your current filters.
-                    </td>
-                  </tr>
-                ) : (
-                  filteredCalls.map((call, idx) => {
-                    const statusColor = statusColors[call.status] || statusColors['default'];
-                    return (
-                      <tr key={idx} className="hover:bg-blue-50/30 transition-colors">
-                        <td className="px-6 py-4 whitespace-nowrap text-gray-500 font-medium">
-                          {new Date(call.timestamp).toLocaleString(undefined, {
-                            month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit'
-                          })}
-                        </td>
-                        <td className="px-6 py-4 capitalize">
-                          <span className={`inline-flex items-center px-2.5 py-1 rounded-md text-xs font-semibold ${
-                            call.call_type === 'inbound'
-                              ? 'bg-[#4285F4]/10 text-[#4285F4]'
-                              : 'bg-purple-100 text-purple-700'
-                          }`}>
-                            {call.call_type}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4">
-                          <div className="text-gray-900 font-medium">{call.customer_name}</div>
-                          <div className="text-gray-400 text-xs mt-0.5">{call.customer_phone}</div>
-                        </td>
-                        <td className="px-6 py-4 text-gray-600 max-w-xs truncate" title={call.summary}>
-                          {call.summary}
-                        </td>
-                        <td className="px-6 py-4">
-                          <span className={`inline-flex px-2.5 py-1 rounded-md text-xs font-semibold ${statusColor}`}>
-                            {call.status}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 text-gray-500">
-                          {call.booked_time || '—'}
-                        </td>
-                        <td className="px-6 py-4">
-                          {call.recording_url ? (
-                            <a
-                              href={call.recording_url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="inline-flex items-center gap-1 text-[#4285F4] hover:underline text-xs font-medium"
-                            >
-                              Listen
-                            </a>
-                          ) : (
-                            <span className="text-gray-300 text-xs">—</span>
-                          )}
-                        </td>
-                        <td className="px-6 py-4 text-gray-600 max-w-xs truncate" title={call.address}>
-                          {call.address || '—'}
-                        </td>
-                        <td className="px-6 py-4">
-                          <div className="flex items-center gap-3">
-                            <button
-                              onClick={() => handleEdit(call)}
-                              className="text-indigo-600 hover:text-indigo-800 transition"
-                              title="Edit"
-                            >
-                              <Edit className="w-4 h-4" />
-                            </button>
-                            <button
-                              onClick={() => handleDelete(call._row)}
-                              className="text-red-500 hover:text-red-700 transition"
-                              title="Delete"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })
-                )}
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        <footer className="mt-8 flex flex-col sm:flex-row justify-between items-center text-xs text-gray-400 pt-4 gap-2">
-          <span>&copy; {new Date().getFullYear()} Alpha AI – Your trusted AI receptionist.</span>
-          <span className="flex items-center space-x-1">
-            <span>Powered by</span>
-            <span className="font-semibold text-gray-500">Alpha AI</span>
-            <span style={{ color: '#4285F4' }}>α</span>
-          </span>
-        </footer>
+      <main className="flex-1 p-8 overflow-y-auto">
+        {renderContent()}
       </main>
-
-      {/* QR Modal */}
-      {isQRModalOpen && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fadeIn"
-          onClick={() => setIsQRModalOpen(false)}
-        >
-          <div
-            className="bg-white rounded-3xl shadow-2xl max-w-md w-full max-h-[90vh] overflow-y-auto p-6 relative border border-white/20 animate-scaleUp"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <button
-              onClick={() => setIsQRModalOpen(false)}
-              className="absolute -top-3 -right-3 bg-white hover:bg-gray-100 text-gray-700 rounded-full p-2 shadow-lg transition-colors z-10 border border-gray-200"
-              aria-label="Close modal"
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-            <div className="flex flex-col items-center justify-center">
-              <QRDisplay client={client} />
-            </div>
-            <div className="mt-4 text-center text-xs text-gray-400">
-              Scan or download your QR code
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Edit Modal */}
       {editModalOpen && editingCall && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fadeIn">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 relative border border-white/20 animate-scaleUp">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-md w-full p-6 relative">
             <button
               onClick={() => setEditModalOpen(false)}
-              className="absolute -top-3 -right-3 bg-white hover:bg-gray-100 text-gray-700 rounded-full p-2 shadow-lg transition-colors z-10 border border-gray-200"
+              className="absolute -top-3 -right-3 bg-white dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-full p-2 shadow-lg transition-colors z-10 border border-gray-200 dark:border-gray-600"
             >
               <X className="w-5 h-5" />
             </button>
-            <h3 className="text-xl font-semibold mb-4">Edit Call Log</h3>
+            <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">Edit Call Log</h3>
             <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-1">
               <div>
-                <label className="block text-sm font-medium text-gray-700">Customer Name</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Customer Name</label>
                 <input
                   type="text"
                   value={editForm.customer_name}
                   onChange={(e) => setEditForm({ ...editForm, customer_name: e.target.value })}
-                  className="mt-1 w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-[#4285F4] focus:border-transparent"
+                  className="mt-1 w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 rounded-lg px-4 py-2 text-gray-900 dark:text-white focus:ring-2 focus:ring-[#4285F4] outline-none"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700">Customer Phone</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Customer Phone</label>
                 <input
                   type="text"
                   value={editForm.customer_phone}
                   onChange={(e) => setEditForm({ ...editForm, customer_phone: e.target.value })}
-                  className="mt-1 w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-[#4285F4] focus:border-transparent"
+                  className="mt-1 w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 rounded-lg px-4 py-2 text-gray-900 dark:text-white focus:ring-2 focus:ring-[#4285F4] outline-none"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700">Summary</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Summary</label>
                 <input
                   type="text"
                   value={editForm.summary}
                   onChange={(e) => setEditForm({ ...editForm, summary: e.target.value })}
-                  className="mt-1 w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-[#4285F4] focus:border-transparent"
+                  className="mt-1 w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 rounded-lg px-4 py-2 text-gray-900 dark:text-white focus:ring-2 focus:ring-[#4285F4] outline-none"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700">Status</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Status</label>
                 <select
                   value={editForm.status}
                   onChange={(e) => setEditForm({ ...editForm, status: e.target.value })}
-                  className="mt-1 w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-[#4285F4] focus:border-transparent"
+                  className="mt-1 w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 rounded-lg px-4 py-2 text-gray-900 dark:text-white focus:ring-2 focus:ring-[#4285F4] outline-none"
                 >
                   <option value="Booked">Booked</option>
                   <option value="General Inquiry">General Inquiry</option>
@@ -737,22 +259,22 @@ export default function ClientDashboardClient({
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700">Booked Time (free text)</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Booked Time</label>
                 <input
                   type="text"
                   value={editForm.booked_time}
                   onChange={(e) => setEditForm({ ...editForm, booked_time: e.target.value })}
-                  className="mt-1 w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-[#4285F4] focus:border-transparent"
-                  placeholder="e.g. today at 6 PM, or 2025-01-15 14:30"
+                  className="mt-1 w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 rounded-lg px-4 py-2 text-gray-900 dark:text-white focus:ring-2 focus:ring-[#4285F4] outline-none"
+                  placeholder="e.g. today at 6 PM"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700">Address</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Address</label>
                 <input
                   type="text"
                   value={editForm.address}
                   onChange={(e) => setEditForm({ ...editForm, address: e.target.value })}
-                  className="mt-1 w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-[#4285F4] focus:border-transparent"
+                  className="mt-1 w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 rounded-lg px-4 py-2 text-gray-900 dark:text-white focus:ring-2 focus:ring-[#4285F4] outline-none"
                 />
               </div>
               <button
@@ -765,23 +287,6 @@ export default function ClientDashboardClient({
           </div>
         </div>
       )}
-
-      <style jsx>{`
-        @keyframes fadeIn {
-          from { opacity: 0; }
-          to { opacity: 1; }
-        }
-        @keyframes scaleUp {
-          from { transform: scale(0.95); opacity: 0; }
-          to { transform: scale(1); opacity: 1; }
-        }
-        .animate-fadeIn {
-          animation: fadeIn 0.2s ease-out;
-        }
-        .animate-scaleUp {
-          animation: scaleUp 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-        }
-      `}</style>
     </div>
   );
 }
