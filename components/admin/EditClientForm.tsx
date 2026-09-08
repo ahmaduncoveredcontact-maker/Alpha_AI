@@ -12,7 +12,7 @@ interface Client {
   voice_instructions: string;
   phone: string;
   email: string;
-  calendar_link: string;
+  // REMOVED: calendar_link
   google_review_link: string;
   delivery_address: string;
   qr_title: string;
@@ -27,6 +27,12 @@ interface Client {
   qr_wallpaper_url?: string;
   qr_sticker_url?: string;
   webhook_url: string;
+  // NEW: Calendar fields
+  working_hours_start?: string;
+  working_hours_end?: string;
+  working_days?: string[];
+  timezone?: string;
+  cal_event_slug?: string;
 }
 
 export default function EditClientForm({ client }: { client: Client }) {
@@ -43,6 +49,16 @@ export default function EditClientForm({ client }: { client: Client }) {
 
   const handleToggle = (key: keyof Client) => {
     setForm({ ...form, [key]: !form[key] });
+  };
+
+  const handleDayToggle = (day: string) => {
+    const currentDays = form.working_days || [];
+    setForm({
+      ...form,
+      working_days: currentDays.includes(day)
+        ? currentDays.filter(d => d !== day)
+        : [...currentDays, day]
+    });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -210,21 +226,100 @@ export default function EditClientForm({ client }: { client: Client }) {
             </div>
           </div>
 
-          {/* Links */}
+          {/* Calendar Settings - NEW */}
+          <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100 transition duration-300 hover:shadow-md hover:border-blue-200">
+            <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+              <GooglePill />
+              Calendar Settings
+            </h3>
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Working Hours Start</label>
+                  <input
+                    type="time"
+                    value={form.working_hours_start || '09:00'}
+                    onChange={(e) => setForm({ ...form, working_hours_start: e.target.value })}
+                    className="mt-1 w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-[#4285F4] outline-none transition"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Working Hours End</label>
+                  <input
+                    type="time"
+                    value={form.working_hours_end || '17:00'}
+                    onChange={(e) => setForm({ ...form, working_hours_end: e.target.value })}
+                    className="mt-1 w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-[#4285F4] outline-none transition"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Working Days</label>
+                <div className="flex flex-wrap gap-2 mt-1">
+                  {['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'].map(day => {
+                    const days = form.working_days || ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
+                    return (
+                      <label key={day} className="flex items-center space-x-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={days.includes(day)}
+                          onChange={() => handleDayToggle(day)}
+                          className="h-4 w-4 rounded border-gray-300 text-[#4285F4] focus:ring-[#4285F4]"
+                        />
+                        <span className="text-sm">{day.slice(0, 3)}</span>
+                      </label>
+                    );
+                  })}
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Timezone</label>
+                <select
+                  value={form.timezone || 'America/New_York'}
+                  onChange={(e) => setForm({ ...form, timezone: e.target.value })}
+                  className="mt-1 w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-[#4285F4] outline-none transition"
+                >
+                  <option value="America/New_York">Eastern Time (ET)</option>
+                  <option value="America/Chicago">Central Time (CT)</option>
+                  <option value="America/Denver">Mountain Time (MT)</option>
+                  <option value="America/Los_Angeles">Pacific Time (PT)</option>
+                  <option value="America/Phoenix">Arizona (MST)</option>
+                  <option value="Europe/London">London (GMT/BST)</option>
+                  <option value="Europe/Paris">Paris (CET/CEST)</option>
+                  <option value="Asia/Dubai">Dubai (GST)</option>
+                  <option value="Asia/Kolkata">India (IST)</option>
+                  <option value="Asia/Singapore">Singapore (SGT)</option>
+                  <option value="Australia/Sydney">Sydney (AEST/AEDT)</option>
+                </select>
+              </div>
+              {form.cal_event_slug && (
+                <div className="mt-2 p-3 bg-blue-50 rounded-lg border border-blue-200">
+                  <p className="text-sm text-blue-700">
+                    <span className="font-medium">Booking Link:</span>{' '}
+                    <a 
+                      href={`https://cal.com/${process.env.NEXT_PUBLIC_CAL_USERNAME || 'alphaai'}/${form.cal_event_slug}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="underline"
+                    >
+                      https://cal.com/alphaai/{form.cal_event_slug}
+                    </a>
+                  </p>
+                  <p className="text-xs text-blue-500 mt-1">
+                    To change availability, holidays, or buffer time, open this link and edit the event type.
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Review Links */}
           <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100 transition duration-300 hover:shadow-md hover:border-yellow-200">
             <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
               <GooglePill />
-              Calendar & Review Links
+              Review Links
             </h3>
             <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Calendar Link</label>
-                <input
-                  value={form.calendar_link || ''}
-                  onChange={(e) => setForm({ ...form, calendar_link: e.target.value })}
-                  className="mt-1 w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-[#FBBC05] outline-none transition"
-                />
-              </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700">Google Review Link</label>
                 <input
@@ -427,17 +522,15 @@ export default function EditClientForm({ client }: { client: Client }) {
             📱 QR Card Preview
           </h4>
           
-          {/* Responsive Scaled Wrapper with Google Tint Background */}
           <div 
             className="w-full rounded-2xl border flex justify-center overflow-hidden"
             style={{ 
               background: 'linear-gradient(135deg, rgba(66,133,244,0.03) 0%, rgba(234,67,53,0.03) 33%, rgba(251,188,5,0.03) 66%, rgba(52,168,83,0.03) 100%)',
               borderColor: 'rgba(66,133,244,0.1)',
-              height: '520px', // Fixed container height to crop the scaled element bounds
+              height: '520px',
               paddingTop: '24px'
             }}
           >
-            {/* CSS Transform scale to responsively fit the 400px card into the sidebar without horizontal scrolling */}
             <div className="origin-top" style={{ transform: 'scale(0.72)', width: '400px' }}>
               <QRDisplay client={form} />
             </div>

@@ -1,5 +1,6 @@
 const OMNIDIM_BASE = process.env.OMNIDIM_BASE_URL || 'https://backend.omnidim.io/api/v1';
 const API_KEY = process.env.OMNIDIM_API_KEY;
+const CALCOM_API_KEY = process.env.CALCOM_API_KEY;
 
 const headers = {
   'Authorization': `Bearer ${API_KEY}`,
@@ -7,8 +8,11 @@ const headers = {
 };
 
 export const vapi = {
-  // This function creates an OmniDimensions Agent
-  createAssistant: async (config: { name: string, instructions: string, calendarLink?: string }) => {
+  createAssistant: async (config: { 
+    name: string, 
+    instructions: string, 
+    calEventSlug?: string, // NEW: instead of calendarLink
+  }) => {
     // Build context breakdown with instructions
     const contextBreakdown = [
       {
@@ -18,21 +22,21 @@ export const vapi = {
       },
     ];
 
-    // If calendar link is provided, add it as a separate context block
-    if (config.calendarLink) {
+    // Add a note about booking if slug is provided
+    if (config.calEventSlug) {
       contextBreakdown.push({
-        title: "Booking Link",
-        body: `The booking link is: ${config.calendarLink}. You can tell the customer to visit this link to book an appointment.`,
+        title: "Booking Info",
+        body: `You can book appointments using the "Book_Appointment" tool. The event slug is ${config.calEventSlug}.`,
         is_enabled: true,
       });
     }
 
-    // Simplified payload – only what's needed
+    // Build the payload – minimal to avoid server errors
     const body: any = {
       name: config.name,
       welcome_message: `Hello, this is ${config.name} assistant. How can I help?`,
       context_breakdown: contextBreakdown,
-      // Webhook configuration – this is what sends data to your system
+      // Webhook configuration
       post_call_actions: {
         webhook: {
           url: `${process.env.NEXT_PUBLIC_BASE_URL}/api/vapi/webhook`,
@@ -48,6 +52,34 @@ export const vapi = {
       },
     };
 
+    // Add tools ONLY if Cal.com API key and event slug are available
+    if (CALCOM_API_KEY && config.calEventSlug) {
+      body.tools = [
+        {
+          name: "Book_Appointment",
+          description: "Books an appointment using Cal.com. Use this when the customer confirms a date and time.",
+          method: "POST",
+          url: "https://api.cal.com/v2/bookings",
+          headers: {
+            "Authorization": `Bearer ${CALCOM_API_KEY}`,
+            "Content-Type": "application/json",
+          },
+          body: {
+            eventTypeSlug: config.calEventSlug,
+            start: "{{customer_date_time}}",
+            timeZone: "{{customer_timezone}}",
+            responses: {
+              name: "{{customer_name}}",
+              phone: "{{customer_phone}}",
+              notes: "{{customer_notes}}",
+            },
+          },
+          successMessage: "Appointment booked successfully for {{start}}.",
+          failureMessage: "Sorry, that time is not available. Please suggest another time.",
+        }
+      ];
+    }
+
     const res = await fetch(`${OMNIDIM_BASE}/agents/create`, {
       method: 'POST',
       headers,
@@ -61,11 +93,9 @@ export const vapi = {
     }
 
     const data = await res.json();
-    // OmniDimensions returns { id: <agent_id>, name: ..., status: "Completed" }
     return { assistantId: String(data.id) };
   },
 
-  // This function triggers an outbound call using OmniDimensions
   triggerCall: async (phoneNumber: string, assistantId: string) => {
     const body = {
       agent_id: parseInt(assistantId, 10),
