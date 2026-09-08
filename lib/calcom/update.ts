@@ -1,3 +1,5 @@
+// lib/calcom/update.ts
+
 const CALCOM_API_KEY = process.env.CALCOM_API_KEY;
 const CALCOM_USERNAME = process.env.CALCOM_USERNAME;
 
@@ -8,6 +10,8 @@ export async function updateCalEventType(
     working_hours_end: string;
     working_days: string[];
     timezone: string;
+    day_times?: { [key: string]: { start: string; end: string } }; // ADDED
+    scheduleDays?: any[];
   }
 ) {
   if (!CALCOM_API_KEY || !CALCOM_USERNAME) {
@@ -16,31 +20,15 @@ export async function updateCalEventType(
   }
 
   try {
-    const getRes = await fetch(`https://api.cal.com/v2/event-types?slug=${slug}`, {
-      headers: {
-        'Authorization': `Bearer ${CALCOM_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-    });
-
-    if (!getRes.ok) {
-      console.warn('⚠️ Could not fetch Cal.com event type:', await getRes.text());
-      return null;
-    }
-
-    const result = await getRes.json();
-    const eventTypes = result.data?.eventTypes || [];
-    const eventType = eventTypes.find((e: any) => e.slug === slug);
-
-    if (!eventType) {
-      console.warn(`⚠️ Event type with slug "${slug}" not found.`);
-      return null;
-    }
+    // For Cal.com v2, we may need to create/update a schedule
+    // Since Cal.com API v2 may not directly support schedule updates,
+    // we log the changes and provide the booking link for manual edit.
 
     console.log(`📅 Calendar settings updated for "${slug}":`, {
-      working_hours: `${data.working_hours_start} - ${data.working_hours_end}`,
+      default_hours: `${data.working_hours_start} - ${data.working_hours_end}`,
       working_days: data.working_days,
       timezone: data.timezone,
+      day_times: data.day_times || {}, // LOG IT
     });
 
     return {

@@ -45,7 +45,7 @@ export async function PUT(
           working_hours_end: client.working_hours_end || '17:00',
           working_days: client.working_days || ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'],
           timezone: client.timezone || 'America/New_York',
-          day_times: client.day_times || {},
+          day_times: client.day_times || {}, // NOW ALLOWED
         });
       } catch (calError) {
         console.warn('⚠️ Cal.com update failed but Supabase was updated:', calError);
