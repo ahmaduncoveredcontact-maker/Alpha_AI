@@ -56,11 +56,11 @@ export default function QRDisplay({ client }: { client: Client }) {
   };
 
   return (
-    <div className="flex flex-col items-center w-full">
-      {/* Card – centered with max-width */}
+    <div className="flex flex-col items-center justify-center w-full max-w-md mx-auto">
+      {/* Card */}
       <div
         ref={cardRef}
-        className="w-full max-w-[380px] mx-auto bg-white rounded-2xl shadow-xl p-6 flex flex-col items-center"
+        className="w-full max-w-[380px] bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-6 flex flex-col items-center justify-center mx-auto"
         style={{
           boxSizing: 'border-box',
           fontFamily: 'system-ui, -apple-system, sans-serif',
@@ -68,7 +68,7 @@ export default function QRDisplay({ client }: { client: Client }) {
       >
         {/* Google Branding */}
         <div className="flex flex-col items-center w-full">
-          <svg width="72" height="72" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ marginBottom: '10px' }}>
+          <svg width="72" height="72" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="mb-2">
             <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4"/>
             <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
             <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
@@ -76,8 +76,8 @@ export default function QRDisplay({ client }: { client: Client }) {
           </svg>
 
           <div className="text-center">
-            <div className="text-xl font-medium text-gray-700">review us</div>
-            <div className="text-3xl font-bold text-gray-900">on Google</div>
+            <div className="text-xl font-medium text-gray-700 dark:text-gray-300">review us</div>
+            <div className="text-3xl font-bold text-gray-900 dark:text-white">on Google</div>
           </div>
 
           <div className="flex justify-center text-3xl text-yellow-500 mt-1 tracking-widest">
@@ -85,15 +85,15 @@ export default function QRDisplay({ client }: { client: Client }) {
           </div>
         </div>
 
-        {/* QR Code - centered */}
-        <div className="flex justify-center w-full my-4">
+        {/* QR Code */}
+        <div className="flex justify-center items-center w-full my-4">
           {loading ? (
-            <div className="w-[200px] h-[200px] bg-gray-100 rounded-2xl flex items-center justify-center text-gray-400">
+            <div className="w-[200px] h-[200px] bg-gray-100 dark:bg-gray-700 rounded-2xl flex items-center justify-center text-gray-400">
               Generating QR…
             </div>
           ) : qrDataUrl ? (
             <div className="relative p-1 rounded-2xl bg-gradient-to-r from-red-500 via-yellow-500 via-green-500 to-blue-500">
-              <div className="bg-white rounded-xl p-2">
+              <div className="bg-white dark:bg-gray-800 rounded-xl p-2">
                 <img
                   src={qrDataUrl}
                   alt="QR Code"
@@ -102,27 +102,27 @@ export default function QRDisplay({ client }: { client: Client }) {
               </div>
             </div>
           ) : (
-            <div className="w-[200px] h-[200px] bg-gray-100 rounded-2xl flex items-center justify-center text-gray-400">
+            <div className="w-[200px] h-[200px] bg-gray-100 dark:bg-gray-700 rounded-2xl flex items-center justify-center text-gray-400">
               No QR
             </div>
           )}
         </div>
 
-        {/* Bottom text - centered */}
+        {/* Bottom text */}
         <div className="text-center w-full">
-          <p className="text-sm text-gray-600">
+          <p className="text-sm text-gray-600 dark:text-gray-400">
             {client.qr_subtitle || 'Your feedback helps us improve and grow.'}
           </p>
-          <p className="text-sm text-gray-400 italic mt-1">
+          <p className="text-sm text-gray-400 dark:text-gray-500 italic mt-1">
             {client.qr_tagline || 'Good days start with coffee 😊'}
           </p>
         </div>
       </div>
 
-      {/* Download button - centered */}
+      {/* Download button */}
       <button
         onClick={downloadCard}
-        className="mt-6 bg-gradient-to-r from-indigo-600 to-purple-600 text-white px-8 py-3 rounded-xl font-medium shadow-md hover:shadow-lg hover:scale-105 transition-all duration-200 flex items-center gap-2"
+        className="mt-6 bg-gradient-to-r from-indigo-600 to-purple-600 text-white px-8 py-3 rounded-xl font-medium shadow-md hover:shadow-lg hover:scale-105 transition-all duration-200 flex items-center gap-2 mx-auto"
       >
         <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
@@ -131,7 +131,7 @@ export default function QRDisplay({ client }: { client: Client }) {
       </button>
 
       {client.google_review_link && (
-        <div className="mt-3 text-xs text-gray-400 text-center max-w-xs truncate">
+        <div className="mt-3 text-xs text-gray-400 dark:text-gray-500 text-center max-w-xs truncate mx-auto">
           <span className="font-medium">Review link:</span> {client.google_review_link}
         </div>
       )}

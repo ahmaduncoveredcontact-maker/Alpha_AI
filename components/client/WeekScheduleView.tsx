@@ -66,9 +66,15 @@ export default function WeekScheduleView({
     }
   };
 
+  // Debug logging
+  const handleDayToggleLocal = (day: string) => {
+    console.log('🔄 Toggling day:', day);
+    onDayToggle(day);
+  };
+
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
         {weekDays.map((day) => (
           <div
             key={day.key}
@@ -76,23 +82,23 @@ export default function WeekScheduleView({
               readOnly ? 'cursor-default' : ''
             } ${
               day.enabled
-                ? 'border-[#4285F4] bg-blue-50'
-                : 'border-gray-200 bg-gray-50 opacity-50'
+                ? 'border-[#4285F4] bg-blue-50 dark:bg-blue-900/20'
+                : 'border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 opacity-50'
             } ${day.isToday ? 'ring-2 ring-[#4285F4] ring-offset-2' : ''}`}
           >
             {/* Day header with toggle */}
             <div
               className={`text-center ${!readOnly ? 'cursor-pointer' : ''}`}
-              onClick={() => !readOnly && onDayToggle(day.key)}
+              onClick={() => !readOnly && handleDayToggleLocal(day.key)}
             >
-              <div className="text-xs text-gray-500">{day.date}</div>
-              <div className="text-xs sm:text-sm font-semibold mt-1 truncate">
+              <div className="text-xs text-gray-500 dark:text-gray-400">{day.date}</div>
+              <div className="text-xs sm:text-sm font-semibold mt-1 truncate text-gray-700 dark:text-gray-300">
                 {day.label.split('(')[0].trim()}
               </div>
               <div className="text-xs mt-1">{day.enabled ? '✅' : '❌'}</div>
             </div>
 
-            {/* Per-day time controls - only show if enabled and not readOnly */}
+            {/* Per-day time controls */}
             {day.enabled && !readOnly && (
               <div className="mt-2 space-y-1.5">
                 <input
@@ -100,18 +106,20 @@ export default function WeekScheduleView({
                   value={day.start}
                   onChange={(e) => {
                     const newStart = e.target.value;
+                    console.log('⏰ Start time changed:', day.key, newStart);
                     handleDayTimeChangeLocal(day.key, newStart, day.end);
                   }}
-                  className="w-full text-xs border border-gray-300 rounded px-1.5 py-1 focus:ring-1 focus:ring-[#4285F4] outline-none"
+                  className="w-full text-xs border border-gray-300 dark:border-gray-600 rounded px-1.5 py-1 focus:ring-1 focus:ring-[#4285F4] outline-none bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                 />
                 <input
                   type="time"
                   value={day.end}
                   onChange={(e) => {
                     const newEnd = e.target.value;
+                    console.log('⏰ End time changed:', day.key, newEnd);
                     handleDayTimeChangeLocal(day.key, day.start, newEnd);
                   }}
-                  className="w-full text-xs border border-gray-300 rounded px-1.5 py-1 focus:ring-1 focus:ring-[#4285F4] outline-none"
+                  className="w-full text-xs border border-gray-300 dark:border-gray-600 rounded px-1.5 py-1 focus:ring-1 focus:ring-[#4285F4] outline-none bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                 />
               </div>
             )}
@@ -119,7 +127,7 @@ export default function WeekScheduleView({
             {/* Show times for enabled days in read-only mode */}
             {day.enabled && readOnly && (
               <div className="mt-2 text-center">
-                <div className="text-[10px] text-gray-500">
+                <div className="text-[10px] text-gray-500 dark:text-gray-400">
                   {day.start} – {day.end}
                 </div>
               </div>
@@ -128,28 +136,34 @@ export default function WeekScheduleView({
         ))}
       </div>
 
-      {/* Global time controls (fallback for days without specific times) */}
+      {/* Global time controls */}
       {!readOnly && (
         <div className="grid grid-cols-2 gap-4 mt-2">
           <div>
-            <label className="block text-xs font-medium text-gray-500">Default Start Time</label>
+            <label className="block text-xs font-medium text-gray-500 dark:text-gray-400">Default Start Time</label>
             <input
               type="time"
               value={working_hours_start || '09:00'}
-              onChange={(e) => onHoursChange(e.target.value, working_hours_end || '17:00')}
-              className="mt-1 w-full border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:ring-2 focus:ring-[#4285F4] outline-none"
+              onChange={(e) => {
+                console.log('⏰ Default start changed:', e.target.value);
+                onHoursChange(e.target.value, working_hours_end || '17:00');
+              }}
+              className="mt-1 w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-1.5 text-sm focus:ring-2 focus:ring-[#4285F4] outline-none bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
             />
-            <p className="text-[10px] text-gray-400 mt-0.5">Used for days without specific times</p>
+            <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-0.5">Used for days without specific times</p>
           </div>
           <div>
-            <label className="block text-xs font-medium text-gray-500">Default End Time</label>
+            <label className="block text-xs font-medium text-gray-500 dark:text-gray-400">Default End Time</label>
             <input
               type="time"
               value={working_hours_end || '17:00'}
-              onChange={(e) => onHoursChange(working_hours_start || '09:00', e.target.value)}
-              className="mt-1 w-full border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:ring-2 focus:ring-[#4285F4] outline-none"
+              onChange={(e) => {
+                console.log('⏰ Default end changed:', e.target.value);
+                onHoursChange(working_hours_start || '09:00', e.target.value);
+              }}
+              className="mt-1 w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-1.5 text-sm focus:ring-2 focus:ring-[#4285F4] outline-none bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
             />
-            <p className="text-[10px] text-gray-400 mt-0.5">Used for days without specific times</p>
+            <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-0.5">Used for days without specific times</p>
           </div>
         </div>
       )}

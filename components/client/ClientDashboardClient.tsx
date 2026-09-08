@@ -10,7 +10,7 @@ import AppointmentsPage from './AppointmentsPage';
 import CallLogPage from './CallLogPage';
 import SchedulePage from './SchedulePage';
 import SettingsPage from './SettingsPage';
-import { X } from 'lucide-react';
+import { Menu, X } from 'lucide-react';
 
 interface CallLog {
   _row: number;
@@ -60,6 +60,7 @@ export default function ClientDashboardClient({
   const router = useRouter();
   const { theme, toggleTheme } = useTheme();
   const [activeTab, setActiveTab] = useState('dashboard');
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [calls, setCalls] = useState<CallLog[]>(initialCalls);
   const [savingSchedule, setSavingSchedule] = useState(false);
 
@@ -75,19 +76,17 @@ export default function ClientDashboardClient({
     address: '',
   });
 
-  // Handle navigation with replace to fix back button behavior
   const handleNavigate = (tab: string) => {
     setActiveTab(tab);
-    // Replace the current URL with the tab as a hash, so back goes to previous tab
+    setIsMobileMenuOpen(false);
     const url = `/live/${client.slug}?tab=${tab}`;
     router.replace(url, { scroll: false });
   };
 
-  // On mount, check for tab in URL
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const tab = params.get('tab');
-    if (tab && navItems.some(item => item.id === tab)) {
+    if (tab) {
       setActiveTab(tab);
     }
   }, []);
@@ -165,15 +164,6 @@ export default function ClientDashboardClient({
     }
   };
 
-  const navItems = [
-    { id: 'dashboard', label: 'Dashboard' },
-    { id: 'qr-code', label: 'QR Code' },
-    { id: 'appointments', label: 'Appointments' },
-    { id: 'calls', label: 'Call Log' },
-    { id: 'schedule', label: 'Schedule' },
-    { id: 'settings', label: 'Settings' },
-  ];
-
   const renderContent = () => {
     switch (activeTab) {
       case 'dashboard':
@@ -219,20 +209,42 @@ export default function ClientDashboardClient({
   };
 
   return (
-    <div className="flex min-h-screen bg-gray-50 dark:bg-gray-950 pt-[64px] lg:pt-0">
+    <div className="flex min-h-screen bg-gray-50 dark:bg-gray-950">
+      {/* Top Navbar - clean, no overlap */}
+      <nav className="fixed top-0 left-0 right-0 z-50 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 px-4 py-3 flex items-center justify-between h-16">
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => setIsMobileMenuOpen(true)}
+            className="lg:hidden p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition"
+            aria-label="Open menu"
+          >
+            <Menu className="w-6 h-6" />
+          </button>
+          <div className="flex items-center gap-2">
+            <span className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+              α
+            </span>
+            <span className="text-lg font-semibold text-gray-800 dark:text-white">Alpha AI</span>
+          </div>
+        </div>
+      </nav>
+
+      {/* Sidebar */}
       <Sidebar
         activeTab={activeTab}
         setActiveTab={handleNavigate}
         theme={theme}
         toggleTheme={toggleTheme}
-        businessName={client.business_name}
+        isMobileMenuOpen={isMobileMenuOpen}
+        setIsMobileMenuOpen={setIsMobileMenuOpen}
       />
 
-      <main className="flex-1 p-4 sm:p-6 lg:p-8 overflow-y-auto w-full mt-4 lg:mt-0">
+      {/* Main Content - with top padding to avoid navbar overlap */}
+      <main className="flex-1 p-4 sm:p-6 lg:p-8 overflow-y-auto w-full mt-16 lg:mt-16 min-h-screen">
         {renderContent()}
       </main>
 
-      {/* Edit Modal */}
+      {/* Edit Modal - same as before */}
       {editModalOpen && editingCall && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
           <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-md w-full p-6 relative max-h-[90vh] overflow-y-auto">

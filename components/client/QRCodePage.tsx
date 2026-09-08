@@ -6,7 +6,7 @@ interface Client {
   id: string;
   business_name: string;
   slug: string;
-  delivery_address?: string; // ✅ ADDED
+  delivery_address?: string;
   google_review_link?: string;
   qr_title?: string;
   qr_subtitle?: string;
@@ -26,12 +26,12 @@ export default function QRCodePage({ client }: { client: Client }) {
         </p>
       </div>
 
-      <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-8 border border-gray-100 dark:border-gray-700 flex justify-center">
+      <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-8 border border-gray-100 dark:border-gray-700 flex justify-center items-center">
         <QRDisplay client={client} />
       </div>
 
       {/* NFC Card Info */}
-      <div className="bg-blue-50 dark:bg-blue-900/20 rounded-xl p-4 border border-blue-200 dark:border-blue-700">
+      <div className="bg-blue-50 dark:bg-blue-900/20 rounded-xl p-4 border border-blue-200 dark:border-blue-700 text-center">
         <p className="text-sm text-blue-700 dark:text-blue-300">
           📦 <strong>NFC card</strong> will be delivered to your provided address: 
           <span className="ml-1 font-mono bg-white dark:bg-gray-800 px-2 py-0.5 rounded border border-blue-200 dark:border-blue-700">

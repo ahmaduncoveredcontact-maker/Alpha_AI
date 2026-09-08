@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import WeekScheduleView from './WeekScheduleView';
 import { TIMEZONES } from '@/lib/constants/timezones';
 
@@ -33,29 +33,44 @@ export default function SchedulePage({
     client.day_times || {}
   );
 
+  // Update local state when client changes
+  useEffect(() => {
+    setScheduleData({
+      working_days: client.working_days || ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'],
+      working_hours_start: client.working_hours_start || '09:00',
+      working_hours_end: client.working_hours_end || '17:00',
+      timezone: client.timezone || 'America/New_York',
+    });
+    setDayTimes(client.day_times || {});
+  }, [client]);
+
   const handleDayToggle = (day: string) => {
     const current = scheduleData.working_days || [];
     const updated = current.includes(day)
       ? current.filter(d => d !== day)
       : [...current, day];
-    setScheduleData({ ...scheduleData, working_days: updated });
-    onUpdate({ ...scheduleData, working_days: updated, day_times: dayTimes });
+    const newData = { ...scheduleData, working_days: updated, day_times: dayTimes };
+    setScheduleData(newData);
+    onUpdate(newData);
   };
 
   const handleHoursChange = (start: string, end: string) => {
-    setScheduleData({ ...scheduleData, working_hours_start: start, working_hours_end: end });
-    onUpdate({ ...scheduleData, working_hours_start: start, working_hours_end: end, day_times: dayTimes });
+    const newData = { ...scheduleData, working_hours_start: start, working_hours_end: end, day_times: dayTimes };
+    setScheduleData(newData);
+    onUpdate(newData);
   };
 
   const handleDayTimeChange = (day: string, start: string, end: string) => {
     const updated = { ...dayTimes, [day]: { start, end } };
     setDayTimes(updated);
-    onUpdate({ ...scheduleData, day_times: updated });
+    const newData = { ...scheduleData, day_times: updated };
+    onUpdate(newData);
   };
 
   const handleTimezoneChange = (timezone: string) => {
-    setScheduleData({ ...scheduleData, timezone });
-    onUpdate({ ...scheduleData, timezone, day_times: dayTimes });
+    const newData = { ...scheduleData, timezone, day_times: dayTimes };
+    setScheduleData(newData);
+    onUpdate(newData);
   };
 
   return (
