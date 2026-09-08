@@ -239,8 +239,8 @@ export default function ClientDashboardClient({
         setIsMobileMenuOpen={setIsMobileMenuOpen}
       />
 
-      {/* Main Content - with top padding to avoid navbar overlap */}
-      <main className="flex-1 p-4 sm:p-6 lg:p-8 overflow-y-auto w-full mt-16 lg:mt-16 min-h-screen">
+      {/* Main Content - with left margin on desktop to avoid sidebar overlap */}
+      <main className="flex-1 p-4 sm:p-6 lg:p-8 overflow-y-auto w-full mt-16 lg:mt-16 min-h-screen lg:ml-64">
         {renderContent()}
       </main>
 

@@ -51,15 +51,16 @@ export default function Sidebar({
       <aside
         className={`
           fixed top-0 left-0 z-40
-          w-64 h-screen
+          w-64 h-full
           bg-white dark:bg-gray-900 
           border-r border-gray-200 dark:border-gray-700
-          flex flex-col flex-shrink-0
+          flex flex-col
           transition-transform duration-300 ease-in-out
           ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
+          pt-16 lg:pt-0
         `}
       >
-        {/* Close button for mobile - top right */}
+        {/* Close button - visible only on mobile, at top right */}
         <div className="flex justify-end p-4 lg:hidden">
           <button
             onClick={() => setIsMobileMenuOpen(false)}
