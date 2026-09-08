@@ -3,6 +3,8 @@
 import { useState, useMemo, useEffect } from 'react';
 import QRDisplay from './QRDisplay';
 import { Phone, Calendar, Star, Clock, Download, X, Filter, Copy, Edit, Trash2 } from 'lucide-react';
+import WeekScheduleView from './WeekScheduleView';
+import { TIMEZONES } from '@/lib/constants/timezones';
 
 interface CallLog {
   _row: number;
@@ -29,6 +31,11 @@ interface Client {
   qr_title?: string;
   qr_subtitle?: string;
   qr_tagline?: string;
+  working_hours_start?: string;
+  working_hours_end?: string;
+  working_days?: string[];
+  timezone?: string;
+  cal_event_slug?: string;
 }
 
 const statusColors: Record<string, string> = {
@@ -73,7 +80,16 @@ export default function ClientDashboardClient({
     address: '',
   });
 
-  // Refresh calls – with credentials (fixes 401)
+  // Schedule state
+  const [savingSchedule, setSavingSchedule] = useState(false);
+  const [scheduleMessage, setScheduleMessage] = useState('');
+  const [scheduleData, setScheduleData] = useState({
+    working_days: client.working_days || ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'],
+    working_hours_start: client.working_hours_start || '09:00',
+    working_hours_end: client.working_hours_end || '17:00',
+    timezone: client.timezone || 'America/New_York',
+  });
+
   const refreshCalls = async () => {
     const res = await fetch(`/api/client/${client.slug}/calls`, {
       credentials: 'include',
@@ -81,6 +97,37 @@ export default function ClientDashboardClient({
     if (res.ok) {
       const data = await res.json();
       setCalls(data);
+    }
+  };
+
+  const updateSchedule = async (data: any) => {
+    setSavingSchedule(true);
+    setScheduleMessage('');
+    try {
+      const res = await fetch(`/api/client/${client.slug}/schedule`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(data),
+      });
+      if (res.ok) {
+        const result = await res.json();
+        setScheduleMessage('✅ Schedule updated successfully!');
+        setScheduleData({
+          working_days: data.working_days || scheduleData.working_days,
+          working_hours_start: data.working_hours_start || scheduleData.working_hours_start,
+          working_hours_end: data.working_hours_end || scheduleData.working_hours_end,
+          timezone: data.timezone || scheduleData.timezone,
+        });
+        setTimeout(() => window.location.reload(), 1000);
+      } else {
+        const err = await res.json();
+        setScheduleMessage(`❌ ${err.error || 'Update failed'}`);
+      }
+    } catch (err: any) {
+      setScheduleMessage(`❌ ${err.message}`);
+    } finally {
+      setSavingSchedule(false);
     }
   };
 
@@ -267,6 +314,92 @@ export default function ClientDashboardClient({
               <div className="text-3xl font-bold text-gray-900 leading-none">0</div>
               <div className="text-xs text-gray-400 mt-1">auto‑responded</div>
             </div>
+          </div>
+        </div>
+
+        {/* ===== MY SCHEDULE SECTION ===== */}
+        <div className="bg-white rounded-2xl shadow-sm overflow-hidden border border-gray-100 mb-8">
+          <div className="px-6 py-4 border-b border-gray-100 bg-gray-50">
+            <h2 className="text-xl font-semibold text-gray-800 flex items-center gap-2">
+              <GooglePill />
+              My Weekly Schedule
+            </h2>
+          </div>
+          <div className="p-6">
+            <WeekScheduleView
+              working_days={scheduleData.working_days}
+              working_hours_start={scheduleData.working_hours_start}
+              working_hours_end={scheduleData.working_hours_end}
+              onDayToggle={(day) => {
+                const currentDays = scheduleData.working_days || [];
+                const updated = currentDays.includes(day)
+                  ? currentDays.filter(d => d !== day)
+                  : [...currentDays, day];
+                updateSchedule({
+                  working_days: updated,
+                  working_hours_start: scheduleData.working_hours_start,
+                  working_hours_end: scheduleData.working_hours_end,
+                  timezone: scheduleData.timezone,
+                });
+              }}
+              onHoursChange={(start, end) => {
+                updateSchedule({
+                  working_days: scheduleData.working_days,
+                  working_hours_start: start,
+                  working_hours_end: end,
+                  timezone: scheduleData.timezone,
+                });
+              }}
+            />
+
+            <div className="mt-4">
+              <label className="block text-sm font-medium text-gray-700">Timezone</label>
+              <select
+                value={scheduleData.timezone || 'America/New_York'}
+                onChange={(e) => updateSchedule({
+                  working_days: scheduleData.working_days,
+                  working_hours_start: scheduleData.working_hours_start,
+                  working_hours_end: scheduleData.working_hours_end,
+                  timezone: e.target.value,
+                })}
+                className="mt-1 w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-[#4285F4] outline-none transition"
+              >
+                {TIMEZONES.map((tz) => (
+                  <option key={tz.value} value={tz.value}>
+                    {tz.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {scheduleMessage && (
+              <div className={`mt-4 text-sm px-4 py-2 rounded-lg ${
+                scheduleMessage.includes('✅') 
+                  ? 'bg-green-50 text-green-700 border border-green-200' 
+                  : 'bg-red-50 text-red-600 border border-red-200'
+              }`}>
+                {scheduleMessage}
+              </div>
+            )}
+
+            {client.cal_event_slug && (
+              <div className="mt-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
+                <p className="text-sm text-blue-700">
+                  <span className="font-medium">Booking Link:</span>{' '}
+                  <a 
+                    href={`https://cal.com/${process.env.NEXT_PUBLIC_CAL_USERNAME || 'alphaai'}/${client.cal_event_slug}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="underline"
+                  >
+                    https://cal.com/alphaai/{client.cal_event_slug}
+                  </a>
+                </p>
+                <p className="text-xs text-blue-500 mt-1">
+                  To change availability, holidays, or buffer time, open this link and edit the event type.
+                </p>
+              </div>
+            )}
           </div>
         </div>
 
@@ -566,7 +699,6 @@ export default function ClientDashboardClient({
                   <option value="Voicemail">Voicemail</option>
                 </select>
               </div>
-              {/* Booked Time – now a text input (free format) */}
               <div>
                 <label className="block text-sm font-medium text-gray-700">Booked Time (free text)</label>
                 <input
