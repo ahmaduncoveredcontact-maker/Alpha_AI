@@ -47,10 +47,10 @@ interface Client {
 }
 
 export default function ClientDashboardClient({
-  client,
+  client: initialClient,
   initialCalls,
-  totalCalls,
-  bookings,
+  totalCalls: initialTotalCalls,
+  bookings: initialBookings,
 }: {
   client: Client;
   initialCalls: CallLog[];
@@ -64,6 +64,10 @@ export default function ClientDashboardClient({
   const [calls, setCalls] = useState<CallLog[]>(initialCalls);
   const [savingSchedule, setSavingSchedule] = useState(false);
 
+  // ✅ Client state so it can be updated after schedule changes
+  const [client, setClient] = useState<Client>(initialClient);
+
+  // Edit modal state
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [editingCall, setEditingCall] = useState<CallLog | null>(null);
   const [editForm, setEditForm] = useState({
@@ -98,6 +102,7 @@ export default function ClientDashboardClient({
     }
   };
 
+  // ✅ Update schedule – returns updated client data
   const updateSchedule = async (data: any) => {
     setSavingSchedule(true);
     try {
@@ -108,10 +113,18 @@ export default function ClientDashboardClient({
         body: JSON.stringify(data),
       });
       if (res.ok) {
+        const result = await res.json();
+        // ✅ Update client state with the returned client data
+        if (result.client) {
+          setClient(result.client);
+        }
         await refreshCalls();
+      } else {
+        const err = await res.json();
+        console.error('Schedule update failed:', err);
       }
     } catch (err) {
-      console.error('Schedule update failed:', err);
+      console.error('Schedule update error:', err);
     } finally {
       setSavingSchedule(false);
     }
@@ -169,8 +182,8 @@ export default function ClientDashboardClient({
         return (
           <DashboardOverview
             client={client}
-            totalCalls={totalCalls}
-            bookings={bookings}
+            totalCalls={initialTotalCalls}
+            bookings={initialBookings}
             onNavigate={handleNavigate}
           />
         );
@@ -203,13 +216,13 @@ export default function ClientDashboardClient({
           />
         );
       default:
-        return <DashboardOverview client={client} totalCalls={totalCalls} bookings={bookings} onNavigate={handleNavigate} />;
+        return <DashboardOverview client={client} totalCalls={initialTotalCalls} bookings={initialBookings} onNavigate={handleNavigate} />;
     }
   };
 
   return (
     <div className="flex min-h-screen bg-gray-50 dark:bg-gray-950">
-      {/* Top Navbar - fixed at top */}
+      {/* Top Navbar */}
       <nav className="fixed top-0 left-0 right-0 z-50 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 px-4 py-3 flex items-center justify-between h-16">
         <div className="flex items-center gap-3">
           <button
@@ -228,7 +241,7 @@ export default function ClientDashboardClient({
         </div>
       </nav>
 
-      {/* Sidebar - starts BELOW the navbar */}
+      {/* Sidebar */}
       <Sidebar
         activeTab={activeTab}
         setActiveTab={handleNavigate}
@@ -238,7 +251,7 @@ export default function ClientDashboardClient({
         setIsMobileMenuOpen={setIsMobileMenuOpen}
       />
 
-      {/* Main Content - with left margin on desktop to avoid sidebar overlap, and top margin for navbar */}
+      {/* Main Content */}
       <main className="flex-1 p-4 sm:p-6 lg:p-8 overflow-y-auto w-full mt-16 lg:mt-16 min-h-screen lg:ml-64">
         {renderContent()}
       </main>

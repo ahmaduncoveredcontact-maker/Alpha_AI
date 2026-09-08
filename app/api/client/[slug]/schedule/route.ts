@@ -15,7 +15,6 @@ export async function PUT(
     }
 
     const body = await req.json();
-    // ✅ DESTRUCTURE day_times as well
     const { working_hours_start, working_hours_end, working_days, timezone, day_times } = body;
 
     const { data: client, error } = await supabaseAdmin
@@ -25,7 +24,7 @@ export async function PUT(
         working_hours_end: working_hours_end || '17:00',
         working_days: working_days || ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'],
         timezone: timezone || 'America/New_York',
-        day_times: day_times || {}, // ✅ Now using the passed day_times
+        day_times: day_times || {},
       })
       .eq('slug', params.slug)
       .select()
@@ -51,6 +50,7 @@ export async function PUT(
       }
     }
 
+    // ✅ Return the updated client so frontend can update state
     return NextResponse.json({ success: true, client });
   } catch (error: any) {
     console.error('💥 Schedule update error:', error);

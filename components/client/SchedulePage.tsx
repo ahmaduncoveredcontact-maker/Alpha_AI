@@ -33,7 +33,7 @@ export default function SchedulePage({
     client.day_times || {}
   );
 
-  // Update local state when client changes
+  // ✅ Sync with client prop when it changes (e.g., after save)
   useEffect(() => {
     setScheduleData({
       working_days: client.working_days || ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'],
