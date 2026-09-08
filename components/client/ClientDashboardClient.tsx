@@ -64,7 +64,6 @@ export default function ClientDashboardClient({
   const [calls, setCalls] = useState<CallLog[]>(initialCalls);
   const [savingSchedule, setSavingSchedule] = useState(false);
 
-  // Edit modal state
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [editingCall, setEditingCall] = useState<CallLog | null>(null);
   const [editForm, setEditForm] = useState({
@@ -210,7 +209,7 @@ export default function ClientDashboardClient({
 
   return (
     <div className="flex min-h-screen bg-gray-50 dark:bg-gray-950">
-      {/* Top Navbar - clean, no overlap */}
+      {/* Top Navbar - fixed at top */}
       <nav className="fixed top-0 left-0 right-0 z-50 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 px-4 py-3 flex items-center justify-between h-16">
         <div className="flex items-center gap-3">
           <button
@@ -229,7 +228,7 @@ export default function ClientDashboardClient({
         </div>
       </nav>
 
-      {/* Sidebar */}
+      {/* Sidebar - starts BELOW the navbar */}
       <Sidebar
         activeTab={activeTab}
         setActiveTab={handleNavigate}
@@ -239,12 +238,12 @@ export default function ClientDashboardClient({
         setIsMobileMenuOpen={setIsMobileMenuOpen}
       />
 
-      {/* Main Content - with left margin on desktop to avoid sidebar overlap */}
+      {/* Main Content - with left margin on desktop to avoid sidebar overlap, and top margin for navbar */}
       <main className="flex-1 p-4 sm:p-6 lg:p-8 overflow-y-auto w-full mt-16 lg:mt-16 min-h-screen lg:ml-64">
         {renderContent()}
       </main>
 
-      {/* Edit Modal - same as before */}
+      {/* Edit Modal */}
       {editModalOpen && editingCall && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
           <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-md w-full p-6 relative max-h-[90vh] overflow-y-auto">

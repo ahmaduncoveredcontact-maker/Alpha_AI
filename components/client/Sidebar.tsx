@@ -1,6 +1,5 @@
 'use client';
 
-import { useState } from 'react';
 import { 
   LayoutDashboard, 
   QrCode, 
@@ -47,11 +46,11 @@ export default function Sidebar({
 
   return (
     <>
-      {/* Sidebar */}
+      {/* Sidebar - starts below navbar (top-16) */}
       <aside
         className={`
-          fixed top-0 left-0 z-40
-          w-64 h-full
+          fixed top-16 left-0 z-40
+          w-64 h-[calc(100vh-4rem)]
           bg-white dark:bg-gray-900 
           border-r border-gray-200 dark:border-gray-700
           flex flex-col
@@ -59,7 +58,7 @@ export default function Sidebar({
           ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
         `}
       >
-        {/* Close button - visible only on mobile, at top right */}
+        {/* Close button - visible only on mobile */}
         <div className="flex justify-end p-4 lg:hidden">
           <button
             onClick={() => setIsMobileMenuOpen(false)}
@@ -69,8 +68,8 @@ export default function Sidebar({
           </button>
         </div>
 
-        {/* Navigation - with top padding to clear the navbar */}
-        <nav className="flex-1 p-4 space-y-1 overflow-y-auto pt-16 lg:pt-4">
+        {/* Navigation - Dashboard visible at top */}
+        <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
           {navItems.map((item) => {
             const Icon = item.icon;
             const isActive = activeTab === item.id;
@@ -91,7 +90,7 @@ export default function Sidebar({
           })}
         </nav>
 
-        {/* Footer with theme toggle and logout */}
+        {/* Footer */}
         <div className="p-4 border-t border-gray-200 dark:border-gray-700 space-y-2">
           <button
             onClick={toggleTheme}
