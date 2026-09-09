@@ -18,6 +18,9 @@ interface WeekScheduleViewProps {
   readOnly?: boolean;
   onDayTimeChange?: (day: string, start: string, end: string) => void;
   dayTimes?: { [key: string]: { start: string; end: string } };
+  // ✅ NEW: Buffer time prop
+  buffer_time?: number;
+  onBufferTimeChange?: (minutes: number) => void;
 }
 
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
@@ -31,6 +34,8 @@ export default function WeekScheduleView({
   readOnly = false,
   onDayTimeChange,
   dayTimes = {},
+  buffer_time = 15,
+  onBufferTimeChange,
 }: WeekScheduleViewProps) {
   const [weekDays, setWeekDays] = useState<any[]>([]);
 
@@ -66,7 +71,6 @@ export default function WeekScheduleView({
     }
   };
 
-  // Debug logging
   const handleDayToggleLocal = (day: string) => {
     console.log('🔄 Toggling day:', day);
     onDayToggle(day);
@@ -74,6 +78,26 @@ export default function WeekScheduleView({
 
   return (
     <div className="space-y-4">
+      {/* Buffer Time Control */}
+      {!readOnly && onBufferTimeChange && (
+        <div className="mb-4">
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+            Buffer Time Between Appointments (minutes)
+          </label>
+          <input
+            type="number"
+            min="0"
+            step="5"
+            value={buffer_time}
+            onChange={(e) => onBufferTimeChange(parseInt(e.target.value) || 0)}
+            className="mt-1 w-full border border-gray-300 dark:border-gray-600 rounded-lg px-4 py-2 focus:ring-2 focus:ring-[#4285F4] outline-none bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+          />
+          <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
+            Time gap between appointments (cleanup, notes, travel)
+          </p>
+        </div>
+      )}
+
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
         {weekDays.map((day) => (
           <div

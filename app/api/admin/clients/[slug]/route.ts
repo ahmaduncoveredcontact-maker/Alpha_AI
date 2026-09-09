@@ -22,7 +22,7 @@ export async function PUT(
   try {
     const body = await req.json();
 
-    // Update client in Supabase (includes day_times if present)
+    // Update client in Supabase
     const { data: client, error } = await supabaseAdmin
       .from('clients')
       .update(body)
@@ -34,10 +34,14 @@ export async function PUT(
       return NextResponse.json({ error: error.message }, { status: 400 });
     }
 
-    // If schedule fields were updated, update Cal.com
-    const scheduleFields = ['working_hours_start', 'working_hours_end', 'working_days', 'timezone', 'day_times'];
+    // Check if schedule-related fields were updated
+    const scheduleFields = [
+      'working_hours_start', 'working_hours_end', 
+      'working_days', 'timezone', 'day_times', 'buffer_time'
+    ];
     const hasScheduleUpdate = scheduleFields.some(field => body[field] !== undefined);
 
+    // If schedule was updated and we have a Cal.com event slug, update Cal.com
     if (hasScheduleUpdate && client.cal_event_slug) {
       try {
         await updateCalEventType(client.cal_event_slug, {
@@ -45,7 +49,8 @@ export async function PUT(
           working_hours_end: client.working_hours_end || '17:00',
           working_days: client.working_days || ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'],
           timezone: client.timezone || 'America/New_York',
-          day_times: client.day_times || {}, // NOW ALLOWED
+          day_times: client.day_times || {},
+          buffer_time: client.buffer_time ?? 15,
         });
       } catch (calError) {
         console.warn('⚠️ Cal.com update failed but Supabase was updated:', calError);

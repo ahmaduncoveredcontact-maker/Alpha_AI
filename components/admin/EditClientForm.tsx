@@ -39,6 +39,8 @@ interface Client {
   plan_start_date?: string;
   next_reset_date?: string;
   last_reset_date?: string;
+  // ✅ NEW: Buffer time
+  buffer_time?: number;
 }
 
 export default function EditClientForm({ client }: { client: Client }) {
@@ -80,6 +82,14 @@ export default function EditClientForm({ client }: { client: Client }) {
     setForm({
       ...form,
       day_times: updatedDayTimes,
+    });
+  };
+
+  // ✅ NEW: Handle buffer time change
+  const handleBufferTimeChange = (minutes: number) => {
+    setForm({
+      ...form,
+      buffer_time: minutes,
     });
   };
 
@@ -365,6 +375,9 @@ export default function EditClientForm({ client }: { client: Client }) {
                 }}
                 onDayTimeChange={handleDayTimeChange}
                 dayTimes={dayTimes}
+                // ✅ NEW: Buffer time props
+                buffer_time={form.buffer_time ?? 15}
+                onBufferTimeChange={handleBufferTimeChange}
               />
 
               <div className="mt-4">

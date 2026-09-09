@@ -1,4 +1,3 @@
-// types/client.ts
 export interface Client {
   id: string;
   business_name: string;
@@ -28,13 +27,13 @@ export interface Client {
   consent_confirmed: boolean;
   manager_access_granted: boolean;
 
-  // NEW: Call minute limit fields
-  call_minute_limit?: number;       // Monthly minute limit (0 = unlimited)
-  call_priority?: string;           // "standard", "priority", "premium"
-  minutes_used?: number;            // Total minutes used this cycle
-  plan_start_date?: string;         // When the client joined
-  next_reset_date?: string;         // When minutes will reset (30 days from join)
-  last_reset_date?: string;         // Last time minutes were reset
+  // Call minute fields
+  call_minute_limit?: number;
+  call_priority?: string;
+  minutes_used?: number;
+  plan_start_date?: string;
+  next_reset_date?: string;
+  last_reset_date?: string;
 
   // Calendar fields
   working_hours_start?: string;
@@ -43,6 +42,9 @@ export interface Client {
   timezone?: string;
   cal_event_slug?: string;
   day_times?: { [key: string]: { start: string; end: string } };
+  
+  // ✅ NEW: Buffer time between appointments (in minutes)
+  buffer_time?: number; // default 15
 
   // Google OAuth fields
   gbp_access_token?: string;

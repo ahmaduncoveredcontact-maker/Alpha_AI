@@ -63,7 +63,7 @@ export async function POST(req: NextRequest) {
       const assistant = await vapi.createAssistant({
         name: body.business_name,
         instructions: body.voice_instructions,
-        calEventSlug: calEventSlug, // ✅ Pass the generated slug
+        calEventSlug: calEventSlug,
       });
       vapiAssistantId = assistant.assistantId;
     } catch (error: any) {
@@ -87,7 +87,6 @@ export async function POST(req: NextRequest) {
         services: body.services || null,
         price_ranges: body.price_ranges || null,
         service_area: body.service_area || null,
-        // Removed: calendar_link
         website_contact_form_url: body.website_contact_form_url || null,
         review_business_name: body.review_business_name || null,
         google_review_link: body.google_review_link || null,
@@ -107,7 +106,8 @@ export async function POST(req: NextRequest) {
         plan_start_date: planStartDate.toISOString(),
         next_reset_date: nextResetDate.toISOString(),
         last_reset_date: planStartDate.toISOString(),
-        cal_event_slug: calEventSlug, // ✅ Store the generated slug
+        cal_event_slug: calEventSlug,
+        buffer_time: body.buffer_time || 15, // ✅ NEW: Buffer time default 15 minutes
       })
       .select()
       .single();
@@ -116,7 +116,44 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: `DB insert failed: ${error.message}` }, { status: 500 });
     }
 
-    // 4. Create Google Sheet tab (non‑critical)
+    // 4. Create Cal.com event type with buffer time
+    if (process.env.CALCOM_API_KEY && process.env.CALCOM_USERNAME) {
+      try {
+        const calRes = await fetch('https://api.cal.com/v2/event-types', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${process.env.CALCOM_API_KEY}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            title: `${client.business_name} Booking`,
+            slug: slug,
+            length: 30,
+            timeZone: client.timezone || 'America/New_York',
+            beforeEventBuffer: client.buffer_time || 15,
+            afterEventBuffer: client.buffer_time || 15,
+            locations: [{ type: 'phone', phoneNumber: client.phone || '' }],
+            bookingFields: [
+              { name: 'name', type: 'text', required: true },
+              { name: 'phone', type: 'phone', required: true },
+              { name: 'notes', type: 'textarea' },
+            ],
+          }),
+        });
+        if (calRes.ok) {
+          const calData = await calRes.json();
+          const calSlug = calData.data?.slug || slug;
+          await supabaseAdmin
+            .from('clients')
+            .update({ cal_event_slug: calSlug })
+            .eq('id', client.id);
+        }
+      } catch (calError) {
+        console.warn('⚠️ Cal.com event creation failed:', calError);
+      }
+    }
+
+    // 5. Create Google Sheet tab (non‑critical)
     try {
       await createTab(slug);
       console.log(`✅ Sheet tab created for ${slug}`);
@@ -124,7 +161,7 @@ export async function POST(req: NextRequest) {
       console.error(`⚠️ Sheet creation warning for ${slug}:`, error.message);
     }
 
-    // 5. Send welcome email
+    // 6. Send welcome email
     if (client.email) {
       try {
         await email.sendWelcome(client.email, client.business_name, accessCode);
