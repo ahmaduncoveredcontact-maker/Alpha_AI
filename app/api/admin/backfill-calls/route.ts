@@ -4,6 +4,12 @@ import { appendRow, createTab } from '@/lib/sheets';
 
 export async function POST(req: NextRequest) {
   try {
+    // 🔒 Protect with CRON_SECRET (same as other admin endpoints)
+    const cronSecret = req.headers.get('x-cron-secret');
+    if (cronSecret !== process.env.CRON_SECRET) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const body = await req.json();
     const { slug, calls } = body;
 
@@ -11,7 +17,6 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Missing slug or calls array' }, { status: 400 });
     }
 
-    // Get client
     const { data: client, error: clientError } = await supabaseAdmin
       .from('clients')
       .select('*')
@@ -22,7 +27,6 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Client not found' }, { status: 404 });
     }
 
-    // Create sheet tab if not exists
     await createTab(slug);
 
     let inserted = 0;
@@ -31,18 +35,17 @@ export async function POST(req: NextRequest) {
       const callData = {
         client_slug: slug,
         timestamp: call.timestamp || new Date().toISOString(),
-        call_type: call.call_type || 'inbound',
+        call_type: call.call_type || 'outbound',
         customer_name: call.customer_name || 'Unknown',
         customer_phone: call.customer_phone || '',
         summary: call.summary || 'Call completed',
-        status: call.status || 'General Inquiry',
+        status: call.status || 'Completed',
         booked_time: call.booked_time || '',
         recording_url: call.recording_url || '',
         call_id: call.call_id || `backfill_${Date.now()}_${inserted}`,
         address: call.address || '',
       };
 
-      // Insert to Supabase
       const { error: insertError } = await supabaseAdmin
         .from('call_logs')
         .insert([callData]);
@@ -50,7 +53,6 @@ export async function POST(req: NextRequest) {
       if (insertError) {
         console.error('❌ Supabase insert error:', insertError);
       } else {
-        // Append to Google Sheets
         await appendRow(slug, [
           callData.client_slug,
           callData.timestamp,
@@ -69,11 +71,7 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    return NextResponse.json({
-      success: true,
-      inserted,
-      slug,
-    });
+    return NextResponse.json({ success: true, inserted, slug });
 
   } catch (error: any) {
     console.error('💥 Backfill error:', error);
