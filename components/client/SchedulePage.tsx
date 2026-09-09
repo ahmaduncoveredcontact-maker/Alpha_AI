@@ -11,6 +11,7 @@ interface Client {
   timezone?: string;
   cal_event_slug?: string;
   day_times?: { [key: string]: { start: string; end: string } };
+  buffer_time?: number;
 }
 
 export default function SchedulePage({
@@ -27,50 +28,71 @@ export default function SchedulePage({
     working_hours_start: client.working_hours_start || '09:00',
     working_hours_end: client.working_hours_end || '17:00',
     timezone: client.timezone || 'America/New_York',
+    buffer_time: client.buffer_time ?? 15,
   });
 
   const [dayTimes, setDayTimes] = useState<{ [key: string]: { start: string; end: string } }>(
     client.day_times || {}
   );
 
-  // ✅ Sync with client prop when it changes (e.g., after save)
+  // ✅ Sync with client prop when it changes
   useEffect(() => {
     setScheduleData({
       working_days: client.working_days || ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'],
       working_hours_start: client.working_hours_start || '09:00',
       working_hours_end: client.working_hours_end || '17:00',
       timezone: client.timezone || 'America/New_York',
+      buffer_time: client.buffer_time ?? 15,
     });
     setDayTimes(client.day_times || {});
   }, [client]);
+
+  // ✅ Helper to send update with all data
+  const sendUpdate = (data: any) => {
+    const payload = {
+      ...data,
+      day_times: dayTimes,
+      working_days: data.working_days || scheduleData.working_days,
+      working_hours_start: data.working_hours_start || scheduleData.working_hours_start,
+      working_hours_end: data.working_hours_end || scheduleData.working_hours_end,
+      timezone: data.timezone || scheduleData.timezone,
+      buffer_time: data.buffer_time ?? scheduleData.buffer_time,
+    };
+    onUpdate(payload);
+  };
 
   const handleDayToggle = (day: string) => {
     const current = scheduleData.working_days || [];
     const updated = current.includes(day)
       ? current.filter(d => d !== day)
       : [...current, day];
-    const newData = { ...scheduleData, working_days: updated, day_times: dayTimes };
+    const newData = { ...scheduleData, working_days: updated };
     setScheduleData(newData);
-    onUpdate(newData);
+    sendUpdate(newData);
   };
 
   const handleHoursChange = (start: string, end: string) => {
-    const newData = { ...scheduleData, working_hours_start: start, working_hours_end: end, day_times: dayTimes };
+    const newData = { ...scheduleData, working_hours_start: start, working_hours_end: end };
     setScheduleData(newData);
-    onUpdate(newData);
+    sendUpdate(newData);
   };
 
   const handleDayTimeChange = (day: string, start: string, end: string) => {
     const updated = { ...dayTimes, [day]: { start, end } };
     setDayTimes(updated);
-    const newData = { ...scheduleData, day_times: updated };
-    onUpdate(newData);
+    sendUpdate({ ...scheduleData, day_times: updated });
   };
 
   const handleTimezoneChange = (timezone: string) => {
-    const newData = { ...scheduleData, timezone, day_times: dayTimes };
+    const newData = { ...scheduleData, timezone };
     setScheduleData(newData);
-    onUpdate(newData);
+    sendUpdate(newData);
+  };
+
+  const handleBufferTimeChange = (minutes: number) => {
+    const newData = { ...scheduleData, buffer_time: minutes };
+    setScheduleData(newData);
+    sendUpdate(newData);
   };
 
   return (
@@ -91,6 +113,8 @@ export default function SchedulePage({
           onHoursChange={handleHoursChange}
           onDayTimeChange={handleDayTimeChange}
           dayTimes={dayTimes}
+          buffer_time={scheduleData.buffer_time}
+          onBufferTimeChange={handleBufferTimeChange}
         />
 
         <div className="mt-6">

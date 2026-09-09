@@ -110,32 +110,33 @@ export default function ClientDashboardClient({
   };
 
   // ✅ Update schedule – returns updated client data
-  const updateSchedule = async (data: any) => {
-    setSavingSchedule(true);
-    try {
-      const res = await fetch(`/api/client/${client.slug}/schedule`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify(data),
-      });
-      if (res.ok) {
-        const result = await res.json();
-        // ✅ Update client state with the returned client data
-        if (result.client) {
-          setClient(result.client);
-        }
-        await refreshCalls();
-      } else {
-        const err = await res.json();
-        console.error('Schedule update failed:', err);
+const updateSchedule = async (data: any) => {
+  setSavingSchedule(true);
+  try {
+    const res = await fetch(`/api/client/${client.slug}/schedule`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify(data),
+    });
+    if (res.ok) {
+      const result = await res.json();
+      if (result.client) {
+        console.log('✅ Schedule updated, new client data:', result.client);
+        setClient(result.client);
       }
-    } catch (err) {
-      console.error('Schedule update error:', err);
-    } finally {
-      setSavingSchedule(false);
+      await refreshCalls();
+    } else {
+      const err = await res.json();
+      console.error('Schedule update failed:', err);
+      alert('Failed to update schedule. Please try again.');
     }
-  };
+  } catch (err) {
+    console.error('Schedule update error:', err);
+  } finally {
+    setSavingSchedule(false);
+  }
+};
 
   const handleEdit = (call: CallLog) => {
     setEditingCall(call);

@@ -15,28 +15,38 @@ export async function PUT(
     }
 
     const body = await req.json();
-    const { working_hours_start, working_hours_end, working_days, timezone, day_times, buffer_time } = body;
+    const { 
+      working_hours_start, 
+      working_hours_end, 
+      working_days, 
+      timezone, 
+      day_times,
+      buffer_time 
+    } = body;
 
-    // Update client in Supabase
+    // ✅ Build update object
+    const updateData: any = {};
+    if (working_hours_start !== undefined) updateData.working_hours_start = working_hours_start;
+    if (working_hours_end !== undefined) updateData.working_hours_end = working_hours_end;
+    if (working_days !== undefined) updateData.working_days = working_days;
+    if (timezone !== undefined) updateData.timezone = timezone;
+    if (day_times !== undefined) updateData.day_times = day_times;
+    if (buffer_time !== undefined) updateData.buffer_time = buffer_time;
+
+    // ✅ Update Supabase
     const { data: client, error } = await supabaseAdmin
       .from('clients')
-      .update({
-        working_hours_start: working_hours_start || '09:00',
-        working_hours_end: working_hours_end || '17:00',
-        working_days: working_days || ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'],
-        timezone: timezone || 'America/New_York',
-        day_times: day_times || {},
-        buffer_time: buffer_time ?? 15,
-      })
+      .update(updateData)
       .eq('slug', params.slug)
       .select()
       .single();
 
     if (error) {
+      console.error('❌ Supabase update error:', error);
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    // Update Cal.com event type
+    // ✅ Sync to Cal.com if event slug exists
     if (client.cal_event_slug) {
       try {
         await updateCalEventType(client.cal_event_slug, {
@@ -48,12 +58,14 @@ export async function PUT(
           buffer_time: client.buffer_time ?? 15,
         });
       } catch (calError) {
-        console.warn('⚠️ Cal.com update failed:', calError);
+        console.warn('⚠️ Cal.com update failed but Supabase updated:', calError);
       }
     }
 
+    // ✅ Return the updated client so frontend can refresh
     return NextResponse.json({ success: true, client });
   } catch (error: any) {
+    console.error('💥 Schedule update error:', error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
