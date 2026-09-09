@@ -70,7 +70,6 @@ export async function ensureCalEventType(client: any, scheduleData: any) {
   if (errText.includes('already has an event type with this slug')) {
     console.log(`🔄 Event type "${slug}" already exists, updating...`);
 
-    // First, get the existing event type
     const getRes = await fetch(`https://api.cal.com/v2/event-types?slug=${slug}`, {
       headers: {
         'Authorization': `Bearer ${CALCOM_API_KEY}`,
@@ -94,7 +93,6 @@ export async function ensureCalEventType(client: any, scheduleData: any) {
 
     const eventTypeId = existing.id;
 
-    // Update the event type with new schedule and buffer
     const updatePayload = {
       timeZone: eventPayload.timeZone,
       beforeEventBuffer: eventPayload.beforeEventBuffer,
@@ -123,3 +121,6 @@ export async function ensureCalEventType(client: any, scheduleData: any) {
   console.error(`❌ Cal.com event creation failed: ${errText}`);
   return null;
 }
+
+// ── ALIAS FOR BACKWARD COMPATIBILITY ──
+export const updateCalEventType = ensureCalEventType;

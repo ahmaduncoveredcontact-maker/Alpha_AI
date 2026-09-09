@@ -44,7 +44,7 @@ export async function PUT(
     // If schedule was updated and we have a Cal.com event slug, update Cal.com
     if (hasScheduleUpdate && client.cal_event_slug) {
       try {
-        await updateCalEventType(client.cal_event_slug, {
+        const result = await updateCalEventType(client, {
           working_hours_start: client.working_hours_start || '09:00',
           working_hours_end: client.working_hours_end || '17:00',
           working_days: client.working_days || ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'],
@@ -52,6 +52,13 @@ export async function PUT(
           day_times: client.day_times || {},
           buffer_time: client.buffer_time ?? 15,
         });
+        if (result && result.slug && result.slug !== client.cal_event_slug) {
+          // Update the slug if it changed
+          await supabaseAdmin
+            .from('clients')
+            .update({ cal_event_slug: result.slug })
+            .eq('id', client.id);
+        }
       } catch (calError) {
         console.warn('⚠️ Cal.com update failed but Supabase was updated:', calError);
       }
