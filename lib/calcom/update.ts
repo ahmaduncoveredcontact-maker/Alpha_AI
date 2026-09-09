@@ -3,48 +3,69 @@
 const CALCOM_API_KEY = process.env.CALCOM_API_KEY;
 const CALCOM_USERNAME = process.env.CALCOM_USERNAME;
 
-// ── CREATE CAL.COM EVENT TYPE ──
+// ── CREATE CAL.COM EVENT TYPE WITH UNIQUE SLUG ──
 export async function createCalEventType(client: any) {
   if (!CALCOM_API_KEY || !CALCOM_USERNAME) {
     console.error('❌ Cal.com API key or username missing.');
     return null;
   }
 
-  try {
-    const calRes = await fetch('https://api.cal.com/v2/event-types', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${CALCOM_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        title: `${client.business_name} Booking`,
-        slug: client.slug,
-        length: 30,
-        timeZone: client.timezone || 'America/New_York',
-        beforeEventBuffer: client.buffer_time ?? 15,
-        afterEventBuffer: client.buffer_time ?? 15,
-        locations: [{ type: 'phone', phoneNumber: client.phone || '' }],
-        bookingFields: [
-          { name: 'name', type: 'text', required: true },
-          { name: 'phone', type: 'phone', required: true },
-          { name: 'notes', type: 'textarea' },
-        ],
-      }),
-    });
+  // Base slug from client.slug
+  const baseSlug = client.slug;
+  let finalSlug = baseSlug;
+  let attempt = 1;
+  let created = false;
 
-    if (!calRes.ok) {
-      const errText = await calRes.text();
-      console.error(`❌ Cal.com event creation failed: ${errText}`);
+  while (!created && attempt <= 5) {
+    try {
+      const calRes = await fetch('https://api.cal.com/v2/event-types', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${CALCOM_API_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          title: `${client.business_name} Booking`,
+          slug: finalSlug,
+          length: 30,
+          timeZone: client.timezone || 'America/New_York',
+          beforeEventBuffer: client.buffer_time ?? 15,
+          afterEventBuffer: client.buffer_time ?? 15,
+          locations: [{ type: 'phone', phoneNumber: client.phone || '' }],
+          bookingFields: [
+            { name: 'name', type: 'text', required: true },
+            { name: 'phone', type: 'phone', required: true },
+            { name: 'notes', type: 'textarea' },
+          ],
+        }),
+      });
+
+      if (calRes.ok) {
+        const data = await calRes.json();
+        created = true;
+        const slug = data.data?.slug || finalSlug;
+        console.log(`✅ Cal.com event type created: ${slug}`);
+        return { slug, eventTypeId: data.data?.id };
+      } else {
+        const errText = await calRes.text();
+        // If error is "already exists", try with a suffix
+        if (errText.includes('already has an event type with this slug')) {
+          console.log(`⚠️ Slug "${finalSlug}" already taken, trying new slug...`);
+          finalSlug = `${baseSlug}-${Date.now()}-${attempt}`;
+          attempt++;
+        } else {
+          console.error(`❌ Cal.com event creation failed: ${errText}`);
+          return null;
+        }
+      }
+    } catch (error) {
+      console.error('❌ createCalEventType error:', error);
       return null;
     }
+  }
 
-    const data = await calRes.json();
-    const slug = data.data?.slug || client.slug;
-    console.log(`✅ Cal.com event type created: ${slug}`);
-    return { slug, eventTypeId: data.data?.id };
-  } catch (error) {
-    console.error('❌ createCalEventType error:', error);
+  if (!created) {
+    console.error(`❌ Failed to create event type after ${attempt} attempts.`);
     return null;
   }
 }
