@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import { Search, Download, Edit, Trash2, ExternalLink, Eye } from 'lucide-react';
+import { Search, Download, Edit, Trash2, ExternalLink, X } from 'lucide-react';
 
 interface CallLog {
   _row: number;
@@ -53,9 +53,19 @@ export default function CallLogPage({
     'default': 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400',
   };
 
-  const handleViewDetails = (call: CallLog) => {
+  const handleRowClick = (call: CallLog) => {
     setSelectedCall(call);
     setIsDetailModalOpen(true);
+  };
+
+  const handleEditClick = (e: React.MouseEvent, call: CallLog) => {
+    e.stopPropagation(); // Prevent row click from opening modal
+    onEdit(call);
+  };
+
+  const handleDeleteClick = (e: React.MouseEvent, rowNumber: number) => {
+    e.stopPropagation(); // Prevent row click from opening modal
+    onDelete(rowNumber);
   };
 
   return (
@@ -63,7 +73,7 @@ export default function CallLogPage({
       <div>
         <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Call Log</h2>
         <p className="text-sm text-gray-500 dark:text-gray-400">
-          View and manage all incoming and outgoing calls
+          Click any row to view full details
         </p>
       </div>
 
@@ -130,7 +140,11 @@ export default function CallLogPage({
                 filteredCalls.map((call) => {
                   const color = statusColors[call.status] || statusColors['default'];
                   return (
-                    <tr key={call._row} className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
+                    <tr
+                      key={call._row}
+                      onClick={() => handleRowClick(call)}
+                      className="hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors cursor-pointer"
+                    >
                       <td className="px-6 py-4 whitespace-nowrap text-gray-600 dark:text-gray-300">
                         {new Date(call.timestamp).toLocaleString(undefined, {
                           month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit'
@@ -158,34 +172,27 @@ export default function CallLogPage({
                         </span>
                       </td>
                       <td className="px-6 py-4">
-                        <div className="flex items-center gap-2">
-                          {/* View Details Button */}
-                          <button
-                            onClick={() => handleViewDetails(call)}
-                            className="text-blue-600 dark:text-blue-400 hover:text-blue-800 transition"
-                            title="View Details"
-                          >
-                            <Eye className="w-4 h-4" />
-                          </button>
+                        <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
                           {call.recording_url && (
                             <a
                               href={call.recording_url}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="text-blue-600 dark:text-blue-400 hover:underline text-xs"
+                              className="text-blue-600 dark:text-blue-400 hover:underline"
+                              title="Listen to recording"
                             >
                               <ExternalLink className="w-4 h-4" />
                             </a>
                           )}
                           <button
-                            onClick={() => onEdit(call)}
+                            onClick={(e) => handleEditClick(e, call)}
                             className="text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 transition"
                             title="Edit"
                           >
                             <Edit className="w-4 h-4" />
                           </button>
                           <button
-                            onClick={() => onDelete(call._row)}
+                            onClick={(e) => handleDeleteClick(e, call._row)}
                             className="text-red-500 dark:text-red-400 hover:text-red-700 transition"
                             title="Delete"
                           >
@@ -219,7 +226,7 @@ export default function CallLogPage({
             </h3>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* Column 1 */}
+              {/* Left Column */}
               <div className="space-y-3">
                 <div>
                   <p className="text-xs text-gray-400 dark:text-gray-500">Customer Name</p>
@@ -253,7 +260,7 @@ export default function CallLogPage({
                 </div>
               </div>
 
-              {/* Column 2 */}
+              {/* Right Column */}
               <div className="space-y-3">
                 <div>
                   <p className="text-xs text-gray-400 dark:text-gray-500">Date & Time</p>
