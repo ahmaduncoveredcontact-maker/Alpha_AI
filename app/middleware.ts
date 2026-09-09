@@ -5,8 +5,13 @@ import type { NextRequest } from 'next/server';
 export function middleware(request: NextRequest) {
   const path = request.nextUrl.pathname;
 
-  // Admin routes protection
+  // Admin routes protection – EXCLUDE backfill endpoint
   if (path.startsWith('/admin') || path.startsWith('/api/admin')) {
+    // Skip middleware for backfill endpoint
+    if (path === '/api/admin/backfill-calls') {
+      return NextResponse.next();
+    }
+    
     const adminSession = request.cookies.get('admin_session');
     if (!adminSession || adminSession.value !== 'authenticated') {
       const loginUrl = new URL('/admin-login', request.url);
