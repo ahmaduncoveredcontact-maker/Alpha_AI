@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/admin';
-import { verifyVapiSignature } from '@/lib/vapi/webhook';
 import { appendRow, createTab } from '@/lib/sheets';
 import { email } from '@/lib/email/resend';
 import { incrementMinutesUsed } from '@/lib/call-limits';
@@ -10,9 +9,8 @@ export const dynamic = 'force-dynamic';
 export async function POST(req: NextRequest) {
   try {
     const rawBody = await req.text();
-    const signature = req.headers.get('x-vapi-signature') || '';
-
     let body: any;
+
     try {
       body = JSON.parse(rawBody);
     } catch (e) {
@@ -20,76 +18,65 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Invalid JSON payload' }, { status: 400 });
     }
 
-    const message = body.message || body;
+    console.log('📥 Webhook received:', JSON.stringify(body, null, 2));
 
-    if (message.type !== 'end-of-call-report') {
-      return NextResponse.json({ received: true, ignoredType: message.type || 'non-report' });
+    // ── OMNIDIMENSIONS PAYLOAD STRUCTURE ──
+    // {
+    //   "call_status": "completed",
+    //   "call_report": {
+    //     "summary": "...",
+    //     "extracted_variables": { ... }
+    //   }
+    // }
+
+    // 1. Extract data from OmniDimensions payload
+    const callStatus = body.call_status || body.status || 'completed';
+    const callReport = body.call_report || body.analysis || {};
+    const extracted = callReport.extracted_variables || body.extracted_variables || {};
+
+    // 2. Only process completed calls
+    if (callStatus !== 'completed' && callStatus !== 'ended') {
+      console.log(`⏭️ Ignoring call with status: ${callStatus}`);
+      return NextResponse.json({ received: true, ignoredStatus: callStatus });
     }
 
-    const assistantId = message.assistantId || message.assistant?.id || message.call?.assistantId;
-    if (!assistantId) {
-      console.error('❌ Missing assistantId in end-of-call report');
-      return NextResponse.json({ error: 'Missing assistantId' }, { status: 400 });
+    // 3. Find client by agent_id (assistant ID)
+    const agentId = body.agent_id || body.agentId || body.bot_id;
+    if (!agentId) {
+      console.error('❌ Missing agent_id in webhook payload');
+      return NextResponse.json({ error: 'Missing agent_id' }, { status: 400 });
     }
 
     const { data: client, error: clientError } = await supabaseAdmin
       .from('clients')
       .select('*')
-      .eq('vapi_assistant_id', assistantId)
+      .eq('vapi_assistant_id', String(agentId))
       .single();
 
     if (clientError || !client) {
-      console.error(`❌ Client not found for assistantId: ${assistantId}`);
+      console.error(`❌ Client not found for agent_id: ${agentId}`);
       return NextResponse.json({ error: 'Client not found' }, { status: 404 });
     }
 
-    const secretToUse = client.webhook_secret || process.env.VAPI_WEBHOOK_SECRET || '';
-    if (secretToUse && signature) {
-      const isValid = verifyVapiSignature(body, signature, secretToUse);
-      if (!isValid) {
-        console.warn('⚠️ Webhook signature mismatch – continuing processing');
-      }
-    }
+    console.log(`✅ Found client: ${client.business_name} (${client.slug})`);
 
-    const callId = message.call?.id || message.callId || body.call?.id || null;
-    if (callId) {
-      const { data: existing } = await supabaseAdmin
-        .from('call_logs')
-        .select('id')
-        .eq('call_id', callId)
-        .maybeSingle();
+    // 4. Extract fields (prioritize extracted variables)
+    const customerName = extracted.customer_name || body.customer_name || 'Unknown';
+    const customerPhone = extracted.customer_phone || body.phone_number || '';
+    const bookedTime = extracted.appointment_time || extracted.bookedTime || '';
+    const status = extracted.status || 'General Inquiry';
+    const summary = callReport.summary || body.summary || 'Call completed successfully';
+    const recordingUrl = body.recording_url || callReport.recording_url || '';
+    const address = extracted.address || extracted.patient_address || '';
 
-      if (existing) {
-        console.warn(`⚠️ Duplicate call detected (call_id: ${callId}) – skipping`);
-        return NextResponse.json({ success: true, deduped: true });
-      }
-    }
-
-    const call = message.call || {};
-    const customer = message.customer || call.customer || {};
-    const analysis = message.analysis || call.analysis || {};
-    const structuredData = analysis.structuredData || message.structuredData || {};
-    const startedAt = message.startedAt || call.startedAt || new Date().toISOString();
-
-    const customerPhone = structuredData.customer_phone || customer.number || customer.phone || call.phoneNumber || '';
-    const customerName = structuredData.customer_name || customer.name || 'Unknown';
-    const bookedTime = structuredData.appointment_time || structuredData.bookedTime || '';
-    const status = structuredData.status || analysis.status || 'General Inquiry';
-    const summary = analysis.summary || message.summary || 'Call completed successfully';
-    const recordingUrl = message.recordingUrl || message.stereoRecordingUrl || call.recordingUrl || '';
-    const address = structuredData.address || structuredData.patient_address || '';
-
-    // ✅ Calculate actual call duration in minutes
-    const callDurationSeconds = message.call?.duration || body.call?.duration || 60;
+    // 5. Call duration for minutes tracking
+    const callDurationSeconds = body.call_duration || body.duration || 60;
     const callDurationMinutes = Math.ceil(callDurationSeconds / 60);
 
-    // ✅ Update minutes used with actual duration
-    await incrementMinutesUsed(client.slug, callDurationMinutes);
-    console.log(`📊 Updated minutes for ${client.slug}: +${callDurationMinutes} min`);
-
+    // 6. Build call data
     const callData = {
       client_slug: client.slug,
-      timestamp: new Date(startedAt).toISOString(),
+      timestamp: new Date().toISOString(),
       call_type: 'inbound',
       customer_name: customerName,
       customer_phone: customerPhone,
@@ -97,13 +84,27 @@ export async function POST(req: NextRequest) {
       status: status,
       booked_time: bookedTime,
       recording_url: recordingUrl,
-      call_id: callId || '',
+      call_id: body.call_id || body.callId || '',
       address: address,
     };
 
     console.log(`📝 Final Call Data for ${client.slug}:`, callData);
 
-    // Save to Supabase
+    // 7. Check for duplicates
+    if (callData.call_id) {
+      const { data: existing } = await supabaseAdmin
+        .from('call_logs')
+        .select('id')
+        .eq('call_id', callData.call_id)
+        .maybeSingle();
+
+      if (existing) {
+        console.warn(`⚠️ Duplicate call detected (call_id: ${callData.call_id}) – skipping`);
+        return NextResponse.json({ success: true, deduped: true });
+      }
+    }
+
+    // 8. Save to Supabase
     try {
       const { error: insertError } = await supabaseAdmin
         .from('call_logs')
@@ -118,7 +119,7 @@ export async function POST(req: NextRequest) {
       console.error('💥 Database exception:', dbErr);
     }
 
-    // Append to Google Sheets
+    // 9. Append to Google Sheets
     try {
       await createTab(client.slug);
       await appendRow(client.slug, [
@@ -139,7 +140,11 @@ export async function POST(req: NextRequest) {
       console.error('⚠️ Google Sheets append failed:', sheetErr);
     }
 
-    // Send Email Summary
+    // 10. Update minutes used
+    await incrementMinutesUsed(client.slug, callDurationMinutes);
+    console.log(`📊 Updated minutes for ${client.slug}: +${callDurationMinutes} min`);
+
+    // 11. Send email summary to owner
     if (client.email) {
       try {
         await email.sendCallSummary(client.email, client.business_name, callData);
@@ -149,8 +154,12 @@ export async function POST(req: NextRequest) {
     }
 
     return NextResponse.json({ success: true });
+
   } catch (err: any) {
     console.error('💥 Fatal Webhook Error:', err);
-    return NextResponse.json({ error: 'Internal Server Error', details: err.message }, { status: 500 });
+    return NextResponse.json(
+      { error: 'Internal Server Error', details: err.message },
+      { status: 500 }
+    );
   }
 }

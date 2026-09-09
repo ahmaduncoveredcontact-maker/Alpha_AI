@@ -11,9 +11,8 @@ export const vapi = {
   createAssistant: async (config: { 
     name: string, 
     instructions: string, 
-    calEventSlug?: string, // NEW: instead of calendarLink
+    calEventSlug?: string,
   }) => {
-    // Build context breakdown with instructions
     const contextBreakdown = [
       {
         title: "Instructions",
@@ -22,7 +21,6 @@ export const vapi = {
       },
     ];
 
-    // Add a note about booking if slug is provided
     if (config.calEventSlug) {
       contextBreakdown.push({
         title: "Booking Info",
@@ -31,12 +29,10 @@ export const vapi = {
       });
     }
 
-    // Build the payload – minimal to avoid server errors
     const body: any = {
       name: config.name,
       welcome_message: `Hello, this is ${config.name} assistant. How can I help?`,
       context_breakdown: contextBreakdown,
-      // Webhook configuration
       post_call_actions: {
         webhook: {
           url: `${process.env.NEXT_PUBLIC_BASE_URL}/api/vapi/webhook`,
@@ -52,7 +48,6 @@ export const vapi = {
       },
     };
 
-    // Add tools ONLY if Cal.com API key and event slug are available
     if (CALCOM_API_KEY && config.calEventSlug) {
       body.tools = [
         {
