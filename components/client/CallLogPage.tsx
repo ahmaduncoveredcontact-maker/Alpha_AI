@@ -1,11 +1,11 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import { Search, Download, Edit, Trash2, ExternalLink } from 'lucide-react';
+import { Search, Download, Edit, Trash2, ExternalLink, Eye } from 'lucide-react';
 
 interface CallLog {
   _row: number;
-  client_slug: string; // ✅ ADDED to match the other interface
+  client_slug: string;
   timestamp: string;
   call_type: string;
   customer_name: string;
@@ -29,6 +29,8 @@ export default function CallLogPage({
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [selectedCall, setSelectedCall] = useState<CallLog | null>(null);
+  const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
 
   const filteredCalls = useMemo(() => {
     return calls.filter(call => {
@@ -47,7 +49,13 @@ export default function CallLogPage({
     'General Inquiry': 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400',
     'Rate Limited': 'bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400',
     'No Answer': 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400',
+    'Completed': 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400',
     'default': 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400',
+  };
+
+  const handleViewDetails = (call: CallLog) => {
+    setSelectedCall(call);
+    setIsDetailModalOpen(true);
   };
 
   return (
@@ -93,6 +101,7 @@ export default function CallLogPage({
           <option value="No Answer">No Answer</option>
           <option value="Rate Limited">Rate Limited</option>
           <option value="Emergency">Emergency</option>
+          <option value="Completed">Completed</option>
         </select>
       </div>
 
@@ -150,6 +159,14 @@ export default function CallLogPage({
                       </td>
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-2">
+                          {/* View Details Button */}
+                          <button
+                            onClick={() => handleViewDetails(call)}
+                            className="text-blue-600 dark:text-blue-400 hover:text-blue-800 transition"
+                            title="View Details"
+                          >
+                            <Eye className="w-4 h-4" />
+                          </button>
                           {call.recording_url && (
                             <a
                               href={call.recording_url}
@@ -184,6 +201,130 @@ export default function CallLogPage({
           </table>
         </div>
       </div>
+
+      {/* Detail Modal */}
+      {isDetailModalOpen && selectedCall && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fadeIn">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto p-6 relative border border-gray-200 dark:border-gray-700">
+            <button
+              onClick={() => setIsDetailModalOpen(false)}
+              className="absolute -top-3 -right-3 bg-white dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-full p-2 shadow-lg transition-colors z-10 border border-gray-200 dark:border-gray-600"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+              <span className="text-2xl">📞</span>
+              Call Details
+            </h3>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Column 1 */}
+              <div className="space-y-3">
+                <div>
+                  <p className="text-xs text-gray-400 dark:text-gray-500">Customer Name</p>
+                  <p className="text-sm font-medium text-gray-900 dark:text-white">{selectedCall.customer_name}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-400 dark:text-gray-500">Phone Number</p>
+                  <p className="text-sm font-medium text-gray-900 dark:text-white">{selectedCall.customer_phone || '—'}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-400 dark:text-gray-500">Call Type</p>
+                  <span className={`inline-flex px-2.5 py-1 rounded-md text-xs font-semibold ${
+                    selectedCall.call_type === 'inbound'
+                      ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400'
+                      : 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400'
+                  }`}>
+                    {selectedCall.call_type}
+                  </span>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-400 dark:text-gray-500">Status</p>
+                  <span className={`inline-flex px-2.5 py-1 rounded-full text-xs font-semibold ${
+                    statusColors[selectedCall.status] || statusColors['default']
+                  }`}>
+                    {selectedCall.status}
+                  </span>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-400 dark:text-gray-500">Call ID</p>
+                  <p className="text-sm font-medium text-gray-900 dark:text-white font-mono">{selectedCall.call_id || '—'}</p>
+                </div>
+              </div>
+
+              {/* Column 2 */}
+              <div className="space-y-3">
+                <div>
+                  <p className="text-xs text-gray-400 dark:text-gray-500">Date & Time</p>
+                  <p className="text-sm font-medium text-gray-900 dark:text-white">
+                    {new Date(selectedCall.timestamp).toLocaleString(undefined, {
+                      weekday: 'long',
+                      year: 'numeric',
+                      month: 'long',
+                      day: 'numeric',
+                      hour: 'numeric',
+                      minute: '2-digit',
+                      second: '2-digit'
+                    })}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-400 dark:text-gray-500">Booked Time</p>
+                  <p className="text-sm font-medium text-gray-900 dark:text-white">{selectedCall.booked_time || '—'}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-400 dark:text-gray-500">Address</p>
+                  <p className="text-sm font-medium text-gray-900 dark:text-white">{selectedCall.address || '—'}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-400 dark:text-gray-500">Recording</p>
+                  {selectedCall.recording_url ? (
+                    <a
+                      href={selectedCall.recording_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-sm text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1"
+                    >
+                      <ExternalLink className="w-4 h-4" />
+                      Listen to Recording
+                    </a>
+                  ) : (
+                    <p className="text-sm text-gray-400 dark:text-gray-500">—</p>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Summary Section - Full Width */}
+            <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+              <p className="text-xs text-gray-400 dark:text-gray-500">Summary</p>
+              <p className="text-sm text-gray-900 dark:text-white bg-gray-50 dark:bg-gray-900/50 p-3 rounded-lg mt-1">
+                {selectedCall.summary || '—'}
+              </p>
+            </div>
+
+            <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700 flex justify-end">
+              <button
+                onClick={() => setIsDetailModalOpen(false)}
+                className="bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 px-6 py-2 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <style jsx>{`
+        @keyframes fadeIn {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+        .animate-fadeIn {
+          animation: fadeIn 0.2s ease-out;
+        }
+      `}</style>
     </div>
   );
 }
