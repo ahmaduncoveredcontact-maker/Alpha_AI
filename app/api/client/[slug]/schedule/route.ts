@@ -63,16 +63,15 @@ export async function PUT(
 
     console.log('✅ Supabase updated for client:', client.slug);
 
-    // Ensure Cal.com event type exists
+    // ── ENSURE CAL.COM EVENT TYPE EXISTS ──
     let calEventSlug = client.cal_event_slug;
 
-    // If no cal_event_slug, create one
+    // If no cal_event_slug in DB, create one
     if (!calEventSlug) {
-      console.log('🆕 No cal_event_slug found, creating...');
+      console.log('🆕 No cal_event_slug in DB, creating...');
       const newEvent = await createCalEventType(client);
       if (newEvent) {
         calEventSlug = newEvent.slug;
-        // Update the client with the new slug
         await supabaseAdmin
           .from('clients')
           .update({ cal_event_slug: calEventSlug })
@@ -91,8 +90,9 @@ export async function PUT(
       }
     }
 
-    // If we have a cal_event_slug, sync the schedule
+    // If we have a slug, try to sync – if it fails because event type doesn't exist in Cal.com, create it
     if (calEventSlug) {
+      let syncSuccess = false;
       try {
         const result = await updateCalEventType(calEventSlug, {
           working_hours_start: client.working_hours_start || '09:00',
@@ -103,18 +103,45 @@ export async function PUT(
           buffer_time: client.buffer_time ?? 15,
         });
         if (result?.success) {
+          syncSuccess = true;
           console.log(`✅ Cal.com synced successfully for ${client.slug}`);
-        } else {
-          console.warn(`⚠️ Cal.com sync returned failure for ${client.slug}`);
         }
       } catch (calError) {
-        console.warn('⚠️ Cal.com update failed but Supabase updated:', calError);
+        console.warn('⚠️ Cal.com update failed:', calError);
+      }
+
+      // If sync failed, try creating the event type and then sync again
+      if (!syncSuccess) {
+        console.log('🔄 Sync failed, attempting to create event type and retry...');
+        const newEvent = await createCalEventType(client);
+        if (newEvent) {
+          calEventSlug = newEvent.slug;
+          await supabaseAdmin
+            .from('clients')
+            .update({ cal_event_slug: calEventSlug })
+            .eq('id', client.id);
+          // Retry sync
+          try {
+            const result = await updateCalEventType(calEventSlug, {
+              working_hours_start: client.working_hours_start || '09:00',
+              working_hours_end: client.working_hours_end || '17:00',
+              working_days: client.working_days || ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'],
+              timezone: client.timezone || 'America/New_York',
+              day_times: client.day_times || {},
+              buffer_time: client.buffer_time ?? 15,
+            });
+            if (result?.success) {
+              console.log(`✅ Cal.com synced successfully after creation for ${client.slug}`);
+            }
+          } catch (retryError) {
+            console.error('❌ Retry sync failed:', retryError);
+          }
+        }
       }
     } else {
       console.warn('⚠️ No cal_event_slug to sync to Cal.com');
     }
 
-    // Return the updated client so frontend can refresh
     return NextResponse.json({ success: true, client });
   } catch (error: any) {
     console.error('💥 Schedule update error:', error);

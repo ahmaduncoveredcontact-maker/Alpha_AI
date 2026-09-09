@@ -3,7 +3,7 @@
 const CALCOM_API_KEY = process.env.CALCOM_API_KEY;
 const CALCOM_USERNAME = process.env.CALCOM_USERNAME;
 
-// NEW: Create a Cal.com event type for a client
+// ── CREATE CAL.COM EVENT TYPE ──
 export async function createCalEventType(client: any) {
   if (!CALCOM_API_KEY || !CALCOM_USERNAME) {
     console.error('❌ Cal.com API key or username missing.');
@@ -49,6 +49,7 @@ export async function createCalEventType(client: any) {
   }
 }
 
+// ── UPDATE CAL.COM EVENT TYPE ──
 export async function updateCalEventType(
   slug: string,
   data: {
