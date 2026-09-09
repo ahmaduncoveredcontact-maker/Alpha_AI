@@ -13,7 +13,7 @@ export async function updateCalEventType(
   }
 ) {
   if (!CALCOM_API_KEY || !CALCOM_USERNAME) {
-    console.warn('⚠️ Cal.com API key missing. Skipping calendar update.');
+    console.error('❌ Cal.com API key or username missing. Skipping calendar update.');
     return null;
   }
 
@@ -27,7 +27,8 @@ export async function updateCalEventType(
     });
 
     if (!getRes.ok) {
-      console.warn('⚠️ Could not fetch Cal.com event type:', await getRes.text());
+      const errText = await getRes.text();
+      console.error(`❌ Failed to fetch event type: ${errText}`);
       return null;
     }
 
@@ -36,29 +37,18 @@ export async function updateCalEventType(
     const eventType = eventTypes.find((e: any) => e.slug === slug);
 
     if (!eventType) {
-      console.warn(`⚠️ Event type with slug "${slug}" not found.`);
+      console.error(`❌ Event type with slug "${slug}" not found.`);
       return null;
     }
 
     const eventTypeId = eventType.id;
+    console.log(`✅ Found event type: ${eventTypeId}`);
 
-    // 2. Build schedule with per-day times
+    // 2. Build availability schedule
     const daysOfWeek = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
-    const dayMap: { [key: string]: string } = {
-      'Monday': 'monday',
-      'Tuesday': 'tuesday',
-      'Wednesday': 'wednesday',
-      'Thursday': 'thursday',
-      'Friday': 'friday',
-      'Saturday': 'saturday',
-      'Sunday': 'sunday',
-    };
-
-    // Default start/end if not provided
     const defaultStart = data.working_hours_start || '09:00';
     const defaultEnd = data.working_hours_end || '17:00';
 
-    // Build availability array
     const availability = daysOfWeek.map((day) => {
       const dayName = day.charAt(0).toUpperCase() + day.slice(1);
       const dayTime = data.day_times?.[dayName] || { start: defaultStart, end: defaultEnd };
@@ -81,6 +71,7 @@ export async function updateCalEventType(
     let scheduleId = eventType.scheduleId;
 
     if (!scheduleId) {
+      console.log('🆕 Creating new schedule...');
       const createScheduleRes = await fetch('https://api.cal.com/v2/schedules', {
         method: 'POST',
         headers: {
@@ -92,11 +83,15 @@ export async function updateCalEventType(
       if (createScheduleRes.ok) {
         const scheduleData = await createScheduleRes.json();
         scheduleId = scheduleData.data.id;
+        console.log(`✅ Schedule created: ${scheduleId}`);
       } else {
-        console.warn('⚠️ Failed to create schedule, using default availability.');
+        const errText = await createScheduleRes.text();
+        console.error(`❌ Failed to create schedule: ${errText}`);
+        // Continue without schedule (Cal.com will use default)
       }
     } else {
-      await fetch(`https://api.cal.com/v2/schedules/${scheduleId}`, {
+      console.log(`🔄 Updating existing schedule: ${scheduleId}`);
+      const updateScheduleRes = await fetch(`https://api.cal.com/v2/schedules/${scheduleId}`, {
         method: 'PATCH',
         headers: {
           'Authorization': `Bearer ${CALCOM_API_KEY}`,
@@ -104,6 +99,12 @@ export async function updateCalEventType(
         },
         body: JSON.stringify(schedulePayload),
       });
+      if (!updateScheduleRes.ok) {
+        const errText = await updateScheduleRes.text();
+        console.error(`❌ Failed to update schedule: ${errText}`);
+      } else {
+        console.log('✅ Schedule updated');
+      }
     }
 
     // 4. Update event type with buffer time and schedule
@@ -116,6 +117,8 @@ export async function updateCalEventType(
       updatePayload.scheduleId = scheduleId;
     }
 
+    console.log(`📤 Updating event type with:`, updatePayload);
+
     const updateRes = await fetch(`https://api.cal.com/v2/event-types/${eventTypeId}`, {
       method: 'PATCH',
       headers: {
@@ -127,11 +130,11 @@ export async function updateCalEventType(
 
     if (!updateRes.ok) {
       const errText = await updateRes.text();
-      console.warn(`⚠️ Failed to update event type: ${errText}`);
-    } else {
-      console.log(`✅ Cal.com event type updated: ${slug}`);
+      console.error(`❌ Failed to update event type: ${errText}`);
+      return null;
     }
 
+    console.log(`✅ Cal.com event type updated: ${slug}`);
     return {
       success: true,
       bookingLink: `https://cal.com/${CALCOM_USERNAME}/${slug}`,
