@@ -15,6 +15,7 @@ interface CallLog {
   booked_time?: string;
   recording_url?: string;
   address?: string;
+  call_id?: string; // ✅ ADDED
 }
 
 export default function CallLogPage({
@@ -59,12 +60,12 @@ export default function CallLogPage({
   };
 
   const handleEditClick = (e: React.MouseEvent, call: CallLog) => {
-    e.stopPropagation(); // Prevent row click from opening modal
+    e.stopPropagation();
     onEdit(call);
   };
 
   const handleDeleteClick = (e: React.MouseEvent, rowNumber: number) => {
-    e.stopPropagation(); // Prevent row click from opening modal
+    e.stopPropagation();
     onDelete(rowNumber);
   };
 
