@@ -14,39 +14,20 @@ export async function PUT(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    let body;
-    try {
-      body = await req.json();
-    } catch (err) {
-      console.error('❌ Invalid JSON body:', err);
-      return NextResponse.json({ error: 'Invalid request body' }, { status: 400 });
-    }
-
-    console.log('📝 Schedule update request:', JSON.stringify(body, null, 2));
-
-    const { 
-      working_hours_start, 
-      working_hours_end, 
-      working_days, 
-      timezone, 
-      day_times,
-      buffer_time 
-    } = body;
+    const body = await req.json();
 
     // Build update object
     const updateData: any = {};
-    if (working_hours_start !== undefined) updateData.working_hours_start = working_hours_start;
-    if (working_hours_end !== undefined) updateData.working_hours_end = working_hours_end;
-    if (working_days !== undefined) updateData.working_days = working_days;
-    if (timezone !== undefined) updateData.timezone = timezone;
-    if (day_times !== undefined) updateData.day_times = day_times;
-    if (buffer_time !== undefined) updateData.buffer_time = buffer_time;
+    if (body.working_hours_start !== undefined) updateData.working_hours_start = body.working_hours_start;
+    if (body.working_hours_end !== undefined) updateData.working_hours_end = body.working_hours_end;
+    if (body.working_days !== undefined) updateData.working_days = body.working_days;
+    if (body.timezone !== undefined) updateData.timezone = body.timezone;
+    if (body.day_times !== undefined) updateData.day_times = body.day_times;
+    if (body.buffer_time !== undefined) updateData.buffer_time = body.buffer_time;
 
     if (Object.keys(updateData).length === 0) {
       return NextResponse.json({ error: 'No fields to update' }, { status: 400 });
     }
-
-    console.log('📦 Updating Supabase with:', updateData);
 
     // 1. Update Supabase
     const { data: client, error } = await supabaseAdmin
@@ -73,28 +54,16 @@ export async function PUT(
       buffer_time: client.buffer_time ?? 15,
     };
 
-    let calResult = await ensureCalEventType(client, scheduleData);
+    const result = await ensureCalEventType(client, scheduleData);
 
-    // If the slug changed, update Supabase
-    if (calResult && calResult.slug !== client.cal_event_slug) {
-      await supabaseAdmin
-        .from('clients')
-        .update({ cal_event_slug: calResult.slug })
-        .eq('id', client.id);
-      client.cal_event_slug = calResult.slug;
-      console.log(`📌 Updated cal_event_slug to: ${calResult.slug}`);
-
-      // ⚠️ Manual action: Update OmniDimensions agent
-      console.log(`⚠️ Please update the OmniDimensions agent's "Book_Appointment" tool with the new slug: ${calResult.slug}`);
-    }
-
-    // 3. Return the updated client
+    // If result is null, something went wrong; we already logged it
+    // Return success anyway because Supabase is updated
     return NextResponse.json({ success: true, client });
   } catch (error: any) {
     console.error('💥 Schedule update error:', error);
-    return NextResponse.json({ 
-      error: error.message || 'Internal server error',
-      details: error.stack 
-    }, { status: 500 });
+    return NextResponse.json(
+      { error: error.message || 'Internal server error' },
+      { status: 500 }
+    );
   }
 }

@@ -34,34 +34,23 @@ export async function PUT(
       return NextResponse.json({ error: error.message }, { status: 400 });
     }
 
-    // Check if schedule-related fields were updated
+    // If schedule fields were updated, sync to Cal.com
     const scheduleFields = [
-      'working_hours_start', 'working_hours_end', 
+      'working_hours_start', 'working_hours_end',
       'working_days', 'timezone', 'day_times', 'buffer_time'
     ];
     const hasScheduleUpdate = scheduleFields.some(field => body[field] !== undefined);
 
-    // If schedule was updated and we have a Cal.com event slug, update Cal.com
     if (hasScheduleUpdate && client.cal_event_slug) {
-      try {
-        const result = await updateCalEventType(client, {
-          working_hours_start: client.working_hours_start || '09:00',
-          working_hours_end: client.working_hours_end || '17:00',
-          working_days: client.working_days || ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'],
-          timezone: client.timezone || 'America/New_York',
-          day_times: client.day_times || {},
-          buffer_time: client.buffer_time ?? 15,
-        });
-        if (result && result.slug && result.slug !== client.cal_event_slug) {
-          // Update the slug if it changed
-          await supabaseAdmin
-            .from('clients')
-            .update({ cal_event_slug: result.slug })
-            .eq('id', client.id);
-        }
-      } catch (calError) {
-        console.warn('⚠️ Cal.com update failed but Supabase was updated:', calError);
-      }
+      const scheduleData = {
+        working_hours_start: client.working_hours_start || '09:00',
+        working_hours_end: client.working_hours_end || '17:00',
+        working_days: client.working_days || ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'],
+        timezone: client.timezone || 'America/New_York',
+        day_times: client.day_times || {},
+        buffer_time: client.buffer_time ?? 15,
+      };
+      await ensureCalEventType(client, scheduleData);
     }
 
     return NextResponse.json(client);
