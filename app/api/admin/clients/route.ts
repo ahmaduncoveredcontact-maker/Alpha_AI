@@ -54,25 +54,28 @@ export async function POST(req: NextRequest) {
     const webhookSecret = generateWebhookSecret();
     const webhookUrl = `${process.env.NEXT_PUBLIC_BASE_URL}/api/webhook/lead/${webhookSecret}`;
 
-    // 1. Create Vapi assistant
+    // ✅ Generate calEventSlug from business name (for OmniDimensions booking tool)
+    const calEventSlug = generateSlug(body.business_name);
+
+    // 1. Create OmniDimensions assistant (with calEventSlug)
     let vapiAssistantId: string | undefined;
     try {
       const assistant = await vapi.createAssistant({
         name: body.business_name,
         instructions: body.voice_instructions,
-        calendarLink: body.calendar_link,
+        calEventSlug: calEventSlug, // ✅ Pass the generated slug
       });
       vapiAssistantId = assistant.assistantId;
     } catch (error: any) {
-      console.error('Vapi assistant creation error:', error);
-      return NextResponse.json({ error: `Vapi assistant creation failed: ${error.message || 'Unknown error'}` }, { status: 500 });
+      console.error('OmniDimensions assistant creation error:', error);
+      return NextResponse.json({ error: `Assistant creation failed: ${error.message || 'Unknown error'}` }, { status: 500 });
     }
 
     // 2. Calculate plan dates
     const planStartDate = new Date();
     const nextResetDate = new Date(planStartDate.getTime() + 30 * 24 * 60 * 60 * 1000);
 
-    // 3. Insert client record with all fields including call limits
+    // 3. Insert client record
     const { data: client, error } = await supabaseAdmin
       .from('clients')
       .insert({
@@ -84,7 +87,7 @@ export async function POST(req: NextRequest) {
         services: body.services || null,
         price_ranges: body.price_ranges || null,
         service_area: body.service_area || null,
-        calendar_link: body.calendar_link || null,
+        // Removed: calendar_link
         website_contact_form_url: body.website_contact_form_url || null,
         review_business_name: body.review_business_name || null,
         google_review_link: body.google_review_link || null,
@@ -97,13 +100,14 @@ export async function POST(req: NextRequest) {
         outbound_calling_enabled: body.outbound_calling_enabled || false,
         consent_confirmed: body.consent_confirmed || false,
         manager_access_granted: body.manager_access_granted || false,
-        // ✅ NEW: Call minute fields
+        // ✅ New fields
         call_minute_limit: body.call_minute_limit || 500,
         call_priority: body.call_priority || 'standard',
         minutes_used: 0,
         plan_start_date: planStartDate.toISOString(),
         next_reset_date: nextResetDate.toISOString(),
         last_reset_date: planStartDate.toISOString(),
+        cal_event_slug: calEventSlug, // ✅ Store the generated slug
       })
       .select()
       .single();
@@ -112,7 +116,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: `DB insert failed: ${error.message}` }, { status: 500 });
     }
 
-    // 4. Create Google Sheet tab (if it fails, log but don't fail onboarding)
+    // 4. Create Google Sheet tab (non‑critical)
     try {
       await createTab(slug);
       console.log(`✅ Sheet tab created for ${slug}`);
