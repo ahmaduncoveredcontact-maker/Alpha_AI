@@ -142,6 +142,13 @@ export async function PUT(
       console.warn('⚠️ No cal_event_slug to sync to Cal.com');
     }
 
+    // ⚠️ IMPORTANT: If the cal_event_slug has changed, you need to update the OmniDimensions agent's tool
+    // with the new slug. Please update the agent's "Book_Appointment" tool manually in the OmniDimensions dashboard.
+    if (client.cal_event_slug && client.cal_event_slug !== client.slug) {
+      console.log(`📌 NEW CAL.COM SLUG: ${client.cal_event_slug}`);
+      console.log('⚠️ Please update the OmniDimensions agent\'s "Book_Appointment" tool with this new slug.');
+    }
+
     return NextResponse.json({ success: true, client });
   } catch (error: any) {
     console.error('💥 Schedule update error:', error);
