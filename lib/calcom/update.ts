@@ -1,5 +1,53 @@
+// lib/calcom/update.ts
+
 const CALCOM_API_KEY = process.env.CALCOM_API_KEY;
 const CALCOM_USERNAME = process.env.CALCOM_USERNAME;
+
+// NEW: Create a Cal.com event type for a client
+export async function createCalEventType(client: any) {
+  if (!CALCOM_API_KEY || !CALCOM_USERNAME) {
+    console.error('❌ Cal.com API key or username missing.');
+    return null;
+  }
+
+  try {
+    const calRes = await fetch('https://api.cal.com/v2/event-types', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${CALCOM_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        title: `${client.business_name} Booking`,
+        slug: client.slug,
+        length: 30,
+        timeZone: client.timezone || 'America/New_York',
+        beforeEventBuffer: client.buffer_time ?? 15,
+        afterEventBuffer: client.buffer_time ?? 15,
+        locations: [{ type: 'phone', phoneNumber: client.phone || '' }],
+        bookingFields: [
+          { name: 'name', type: 'text', required: true },
+          { name: 'phone', type: 'phone', required: true },
+          { name: 'notes', type: 'textarea' },
+        ],
+      }),
+    });
+
+    if (!calRes.ok) {
+      const errText = await calRes.text();
+      console.error(`❌ Cal.com event creation failed: ${errText}`);
+      return null;
+    }
+
+    const data = await calRes.json();
+    const slug = data.data?.slug || client.slug;
+    console.log(`✅ Cal.com event type created: ${slug}`);
+    return { slug, eventTypeId: data.data?.id };
+  } catch (error) {
+    console.error('❌ createCalEventType error:', error);
+    return null;
+  }
+}
 
 export async function updateCalEventType(
   slug: string,
@@ -87,7 +135,6 @@ export async function updateCalEventType(
       } else {
         const errText = await createScheduleRes.text();
         console.error(`❌ Failed to create schedule: ${errText}`);
-        // Continue without schedule (Cal.com will use default)
       }
     } else {
       console.log(`🔄 Updating existing schedule: ${scheduleId}`);

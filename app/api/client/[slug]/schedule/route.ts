@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { cookies } from 'next/headers';
-import { updateCalEventType } from '@/lib/calcom/update';
+import { updateCalEventType, createCalEventType } from '@/lib/calcom/update';
 
 export async function PUT(
   req: NextRequest,
@@ -33,7 +33,7 @@ export async function PUT(
       buffer_time 
     } = body;
 
-    // Build update object – only include fields that are actually sent
+    // Build update object
     const updateData: any = {};
     if (working_hours_start !== undefined) updateData.working_hours_start = working_hours_start;
     if (working_hours_end !== undefined) updateData.working_hours_end = working_hours_end;
@@ -63,10 +63,38 @@ export async function PUT(
 
     console.log('✅ Supabase updated for client:', client.slug);
 
-    // Sync to Cal.com if event slug exists
-    if (client.cal_event_slug) {
+    // Ensure Cal.com event type exists
+    let calEventSlug = client.cal_event_slug;
+
+    // If no cal_event_slug, create one
+    if (!calEventSlug) {
+      console.log('🆕 No cal_event_slug found, creating...');
+      const newEvent = await createCalEventType(client);
+      if (newEvent) {
+        calEventSlug = newEvent.slug;
+        // Update the client with the new slug
+        await supabaseAdmin
+          .from('clients')
+          .update({ cal_event_slug: calEventSlug })
+          .eq('id', client.id);
+        // Refresh client data
+        const { data: refreshedClient } = await supabaseAdmin
+          .from('clients')
+          .select('*')
+          .eq('id', client.id)
+          .single();
+        if (refreshedClient) {
+          Object.assign(client, refreshedClient);
+        }
+      } else {
+        console.error('❌ Failed to create Cal.com event type.');
+      }
+    }
+
+    // If we have a cal_event_slug, sync the schedule
+    if (calEventSlug) {
       try {
-        await updateCalEventType(client.cal_event_slug, {
+        const result = await updateCalEventType(calEventSlug, {
           working_hours_start: client.working_hours_start || '09:00',
           working_hours_end: client.working_hours_end || '17:00',
           working_days: client.working_days || ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'],
@@ -74,10 +102,16 @@ export async function PUT(
           day_times: client.day_times || {},
           buffer_time: client.buffer_time ?? 15,
         });
+        if (result?.success) {
+          console.log(`✅ Cal.com synced successfully for ${client.slug}`);
+        } else {
+          console.warn(`⚠️ Cal.com sync returned failure for ${client.slug}`);
+        }
       } catch (calError) {
         console.warn('⚠️ Cal.com update failed but Supabase updated:', calError);
-        // Don't return error – Supabase is already updated
       }
+    } else {
+      console.warn('⚠️ No cal_event_slug to sync to Cal.com');
     }
 
     // Return the updated client so frontend can refresh
