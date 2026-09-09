@@ -119,20 +119,29 @@ const updateSchedule = async (data: any) => {
       credentials: 'include',
       body: JSON.stringify(data),
     });
-    if (res.ok) {
-      const result = await res.json();
-      if (result.client) {
-        console.log('✅ Schedule updated, new client data:', result.client);
-        setClient(result.client);
+    
+    if (!res.ok) {
+      let errorMsg = 'Failed to update schedule.';
+      try {
+        const errorData = await res.json();
+        errorMsg = errorData.error || errorMsg;
+      } catch (e) {
+        // If response is not JSON, use status text
+        errorMsg = `Error ${res.status}: ${res.statusText}`;
       }
-      await refreshCalls();
-    } else {
-      const err = await res.json();
-      console.error('Schedule update failed:', err);
-      alert('Failed to update schedule. Please try again.');
+      throw new Error(errorMsg);
     }
-  } catch (err) {
+    
+    const result = await res.json();
+    if (result.client) {
+      console.log('✅ Schedule updated, new client data:', result.client);
+      setClient(result.client);
+    }
+    await refreshCalls();
+    // Show success feedback (optional)
+  } catch (err: any) {
     console.error('Schedule update error:', err);
+    alert(`Failed to update schedule: ${err.message}`);
   } finally {
     setSavingSchedule(false);
   }

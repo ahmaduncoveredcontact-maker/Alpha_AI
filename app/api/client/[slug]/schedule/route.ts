@@ -14,7 +14,16 @@ export async function PUT(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const body = await req.json();
+    let body;
+    try {
+      body = await req.json();
+    } catch (err) {
+      console.error('❌ Invalid JSON body:', err);
+      return NextResponse.json({ error: 'Invalid request body' }, { status: 400 });
+    }
+
+    console.log('📝 Schedule update request:', JSON.stringify(body, null, 2));
+
     const { 
       working_hours_start, 
       working_hours_end, 
@@ -24,7 +33,7 @@ export async function PUT(
       buffer_time 
     } = body;
 
-    // ✅ Build update object
+    // Build update object – only include fields that are actually sent
     const updateData: any = {};
     if (working_hours_start !== undefined) updateData.working_hours_start = working_hours_start;
     if (working_hours_end !== undefined) updateData.working_hours_end = working_hours_end;
@@ -33,7 +42,13 @@ export async function PUT(
     if (day_times !== undefined) updateData.day_times = day_times;
     if (buffer_time !== undefined) updateData.buffer_time = buffer_time;
 
-    // ✅ Update Supabase
+    if (Object.keys(updateData).length === 0) {
+      return NextResponse.json({ error: 'No fields to update' }, { status: 400 });
+    }
+
+    console.log('📦 Updating Supabase with:', updateData);
+
+    // Update Supabase
     const { data: client, error } = await supabaseAdmin
       .from('clients')
       .update(updateData)
@@ -43,10 +58,12 @@ export async function PUT(
 
     if (error) {
       console.error('❌ Supabase update error:', error);
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      return NextResponse.json({ error: `Database error: ${error.message}` }, { status: 500 });
     }
 
-    // ✅ Sync to Cal.com if event slug exists
+    console.log('✅ Supabase updated for client:', client.slug);
+
+    // Sync to Cal.com if event slug exists
     if (client.cal_event_slug) {
       try {
         await updateCalEventType(client.cal_event_slug, {
@@ -59,13 +76,17 @@ export async function PUT(
         });
       } catch (calError) {
         console.warn('⚠️ Cal.com update failed but Supabase updated:', calError);
+        // Don't return error – Supabase is already updated
       }
     }
 
-    // ✅ Return the updated client so frontend can refresh
+    // Return the updated client so frontend can refresh
     return NextResponse.json({ success: true, client });
   } catch (error: any) {
     console.error('💥 Schedule update error:', error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ 
+      error: error.message || 'Internal server error',
+      details: error.stack 
+    }, { status: 500 });
   }
 }

@@ -47,17 +47,17 @@ export default function SchedulePage({
     setDayTimes(client.day_times || {});
   }, [client]);
 
-  // ✅ Helper to send update with all data
+  // ✅ Send update with ALL current data
   const sendUpdate = (data: any) => {
     const payload = {
-      ...data,
-      day_times: dayTimes,
-      working_days: data.working_days || scheduleData.working_days,
-      working_hours_start: data.working_hours_start || scheduleData.working_hours_start,
-      working_hours_end: data.working_hours_end || scheduleData.working_hours_end,
-      timezone: data.timezone || scheduleData.timezone,
+      working_days: data.working_days ?? scheduleData.working_days,
+      working_hours_start: data.working_hours_start ?? scheduleData.working_hours_start,
+      working_hours_end: data.working_hours_end ?? scheduleData.working_hours_end,
+      timezone: data.timezone ?? scheduleData.timezone,
+      day_times: data.day_times ?? dayTimes,
       buffer_time: data.buffer_time ?? scheduleData.buffer_time,
     };
+    console.log('📤 Sending schedule update:', payload);
     onUpdate(payload);
   };
 
