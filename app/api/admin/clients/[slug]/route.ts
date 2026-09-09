@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/admin';
-import { updateCalEventType } from '@/lib/calcom/update';
+import { ensureCalEventType } from '@/lib/calcom/update'; // ✅ FIXED: changed to ensureCalEventType
 
 export async function GET(
   req: NextRequest,

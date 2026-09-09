@@ -3,14 +3,12 @@
 const CALCOM_API_KEY = process.env.CALCOM_API_KEY;
 const CALCOM_USERNAME = process.env.CALCOM_USERNAME;
 
-// ── ENSURE CAL.COM EVENT TYPE WITH A UNIQUE SLUG ──
 export async function ensureCalEventType(client: any, scheduleData: any) {
   if (!CALCOM_API_KEY || !CALCOM_USERNAME) {
     console.error('❌ Cal.com API key or username missing.');
     return null;
   }
 
-  // 1. Generate a unique slug
   const baseSlug = client.slug;
   let slug = baseSlug;
   let attempts = 0;
@@ -20,11 +18,9 @@ export async function ensureCalEventType(client: any, scheduleData: any) {
   while (!createdOrUpdated && attempts < 5) {
     attempts++;
     if (attempts > 1) {
-      // Add timestamp to avoid conflicts
       slug = `${baseSlug}-${Date.now()}-${attempts}`;
     }
 
-    // 2. Try to CREATE the event type
     const defaultStart = scheduleData.working_hours_start || '09:00';
     const defaultEnd = scheduleData.working_hours_end || '17:00';
     const daysOfWeek = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
@@ -79,12 +75,10 @@ export async function ensureCalEventType(client: any, scheduleData: any) {
     }
 
     const errText = await createRes.text();
-    // If conflict, try a new slug on next iteration
     if (errText.includes('already has an event type with this slug')) {
       console.log(`⚠️ Slug "${slug}" already taken, trying a new one...`);
       continue;
     } else {
-      // If other error, log and exit
       console.error(`❌ Cal.com event creation failed: ${errText}`);
       return null;
     }
@@ -95,8 +89,9 @@ export async function ensureCalEventType(client: any, scheduleData: any) {
     return null;
   }
 
-  // 3. If the slug changed, update Supabase
+  // If the slug changed, update Supabase
   if (finalSlug !== client.cal_event_slug) {
+    const { supabaseAdmin } = await import('@/lib/supabase/admin');
     await supabaseAdmin
       .from('clients')
       .update({ cal_event_slug: finalSlug })
@@ -104,6 +99,8 @@ export async function ensureCalEventType(client: any, scheduleData: any) {
     console.log(`📌 Updated cal_event_slug to: ${finalSlug}`);
   }
 
-  // 4. Return the final slug
   return { slug: finalSlug };
 }
+
+// ✅ ALIAS for backward compatibility
+export const updateCalEventType = ensureCalEventType;
