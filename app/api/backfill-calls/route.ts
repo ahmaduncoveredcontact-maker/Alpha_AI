@@ -4,7 +4,7 @@ import { appendRow, createTab } from '@/lib/sheets';
 
 export async function POST(req: NextRequest) {
   try {
-    // 🔒 Protect with CRON_SECRET (same as other admin endpoints)
+    // 🔒 Protect with CRON_SECRET
     const cronSecret = req.headers.get('x-cron-secret');
     if (cronSecret !== process.env.CRON_SECRET) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
