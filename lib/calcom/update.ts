@@ -42,12 +42,7 @@ export async function updateCalEventType(
 
     const eventTypeId = eventType.id;
 
-    // 2. Build schedule (availability)
-    // Cal.com v2 uses schedules. We'll create or update a schedule.
-    // For simplicity, we'll use the "Default schedule" or create one.
-    // We'll update the event type's scheduleId.
-
-    // Build availability days
+    // 2. Build schedule with per-day times
     const daysOfWeek = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
     const dayMap: { [key: string]: string } = {
       'Monday': 'monday',
@@ -59,29 +54,33 @@ export async function updateCalEventType(
       'Sunday': 'sunday',
     };
 
-    // First, create a schedule with availability
+    // Default start/end if not provided
+    const defaultStart = data.working_hours_start || '09:00';
+    const defaultEnd = data.working_hours_end || '17:00';
+
+    // Build availability array
+    const availability = daysOfWeek.map((day) => {
+      const dayName = day.charAt(0).toUpperCase() + day.slice(1);
+      const dayTime = data.day_times?.[dayName] || { start: defaultStart, end: defaultEnd };
+      const enabled = data.working_days?.includes(dayName) || false;
+      return {
+        day: day,
+        startTime: dayTime.start || defaultStart,
+        endTime: dayTime.end || defaultEnd,
+        enabled: enabled,
+      };
+    });
+
     const schedulePayload = {
       name: `Schedule for ${slug}`,
       timeZone: data.timezone || 'America/New_York',
-      availability: daysOfWeek.map((day) => {
-        const dayName = day.charAt(0).toUpperCase() + day.slice(1);
-        const dayTime = data.day_times?.[dayName] || {};
-        const enabled = data.working_days?.includes(dayName) || false;
-        return {
-          day: day,
-          startTime: dayTime.start || data.working_hours_start || '09:00',
-          endTime: dayTime.end || data.working_hours_end || '17:00',
-          enabled: enabled,
-        };
-      }),
+      availability: availability,
     };
 
-    // Create or update schedule? For now, we'll use the existing schedule or create a new one.
-    // We can fetch the current scheduleId from the event type.
+    // 3. Create or update schedule
     let scheduleId = eventType.scheduleId;
 
     if (!scheduleId) {
-      // Create a new schedule
       const createScheduleRes = await fetch('https://api.cal.com/v2/schedules', {
         method: 'POST',
         headers: {
@@ -97,7 +96,6 @@ export async function updateCalEventType(
         console.warn('⚠️ Failed to create schedule, using default availability.');
       }
     } else {
-      // Update existing schedule
       await fetch(`https://api.cal.com/v2/schedules/${scheduleId}`, {
         method: 'PATCH',
         headers: {
@@ -108,11 +106,11 @@ export async function updateCalEventType(
       });
     }
 
-    // 3. Update event type with buffer time and scheduleId
+    // 4. Update event type with buffer time and schedule
     const updatePayload: any = {
       timeZone: data.timezone || 'America/New_York',
-      beforeEventBuffer: data.buffer_time ?? 15, // minutes before appointment
-      afterEventBuffer: data.buffer_time ?? 15,  // minutes after appointment
+      beforeEventBuffer: data.buffer_time ?? 15,
+      afterEventBuffer: data.buffer_time ?? 15,
     };
     if (scheduleId) {
       updatePayload.scheduleId = scheduleId;
