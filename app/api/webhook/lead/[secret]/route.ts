@@ -3,6 +3,7 @@ import { supabaseAdmin } from '@/lib/supabase/admin';
 import { appendRow } from '@/lib/sheets';
 import { vapi } from '@/lib/vapi/client';
 import { rateLimit } from '@/lib/rate-limit/redis';
+import { checkCallLimit, incrementMinutesUsed } from '@/lib/call-limits';
 
 export async function POST(
   req: NextRequest,
@@ -36,10 +37,31 @@ export async function POST(
     return NextResponse.json({ error: 'Phone number required' }, { status: 400 });
   }
 
-  // Rate limit check
+  // ✅ Check minute limit
+  const limitCheck = await checkCallLimit(client.slug);
+  if (!limitCheck.allowed) {
+    await appendRow(client.slug, [
+      client.slug,
+      new Date().toISOString(),
+      'outbound',
+      name || 'Unknown',
+      phone,
+      `Limit exceeded: ${limitCheck.reason}`,
+      'Rate Limited',
+      '',
+      '',
+    ]);
+    return NextResponse.json({ 
+      error: limitCheck.reason || 'Call limit exceeded',
+      used: limitCheck.used,
+      limit: limitCheck.limit,
+      remaining: 0
+    }, { status: 429 });
+  }
+
+  // Rate limit check (5 calls per hour)
   const { allowed, remaining } = await rateLimit.checkAndIncrement(client.slug);
   if (!allowed) {
-    // Log rate limited
     await appendRow(client.slug, [
       client.slug,
       new Date().toISOString(),
@@ -54,11 +76,10 @@ export async function POST(
     return NextResponse.json({ error: 'Rate limit exceeded' }, { status: 429 });
   }
 
-  // Trigger Vapi outbound call
+  // Trigger OmniDimensions outbound call
   try {
     await vapi.triggerCall(phone, client.vapi_assistant_id!);
   } catch (err: any) {
-    // Log failure
     await appendRow(client.slug, [
       client.slug,
       new Date().toISOString(),
@@ -73,7 +94,10 @@ export async function POST(
     return NextResponse.json({ error: 'Call trigger failed' }, { status: 500 });
   }
 
-  // Log initial call attempt (status will be updated by Vapi webhook later)
+  // ✅ Increment minutes used (estimated 1 minute per call)
+  await incrementMinutesUsed(client.slug, 1);
+
+  // Log initial call attempt
   await appendRow(client.slug, [
     client.slug,
     new Date().toISOString(),
@@ -86,5 +110,9 @@ export async function POST(
     '',
   ]);
 
-  return NextResponse.json({ success: true, remaining });
+  return NextResponse.json({ 
+    success: true, 
+    remaining,
+    minutesRemaining: limitCheck.remaining - 1
+  });
 }

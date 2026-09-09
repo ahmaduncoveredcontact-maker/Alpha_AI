@@ -31,12 +31,14 @@ interface Client {
   working_days?: string[];
   timezone?: string;
   cal_event_slug?: string;
-  day_times?: {
-    [key: string]: {
-      start: string;
-      end: string;
-    };
-  };
+  day_times?: { [key: string]: { start: string; end: string } };
+  // NEW: Call minute fields
+  call_minute_limit?: number;
+  call_priority?: string;
+  minutes_used?: number;
+  plan_start_date?: string;
+  next_reset_date?: string;
+  last_reset_date?: string;
 }
 
 export default function EditClientForm({ client }: { client: Client }) {
@@ -154,12 +156,30 @@ export default function EditClientForm({ client }: { client: Client }) {
     }
   };
 
+  // ✅ Handle resetting minutes
+  const handleResetMinutes = async () => {
+    if (!confirm('Reset minutes used for this client? This will set minutes_used to 0.')) return;
+    const res = await fetch(`/api/admin/clients/${client.slug}/reset-minutes`, {
+      method: 'POST',
+    });
+    if (res.ok) {
+      router.refresh();
+    } else {
+      alert('Failed to reset minutes');
+    }
+  };
+
   const GooglePill = () => (
     <span
       className="w-1.5 h-6 rounded-full"
       style={{ background: 'linear-gradient(180deg, #4285F4 0%, #EA4335 33%, #FBBC05 66%, #34A853 100%)' }}
     />
   );
+
+  const remainingMinutes = Math.max(0, (form.call_minute_limit || 500) - (form.minutes_used || 0));
+  const daysUntilReset = form.next_reset_date
+    ? Math.ceil((new Date(form.next_reset_date).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))
+    : 0;
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -205,6 +225,104 @@ export default function EditClientForm({ client }: { client: Client }) {
                   onChange={(e) => setForm({ ...form, delivery_address: e.target.value })}
                   className="mt-1 w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-[#4285F4] outline-none transition"
                 />
+              </div>
+            </div>
+          </div>
+
+          {/* Call Minute Limit - NEW */}
+          <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100 transition duration-300 hover:shadow-md hover:border-purple-200">
+            <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+              <GooglePill />
+              Call Management
+            </h3>
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">
+                    Call Minute Limit
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="10"
+                    value={form.call_minute_limit ?? 500}
+                    onChange={(e) => setForm({ ...form, call_minute_limit: parseInt(e.target.value) || 0 })}
+                    className="mt-1 w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-[#4285F4] outline-none transition"
+                  />
+                  <p className="text-xs text-gray-400 mt-1">
+                    Set to <strong>0</strong> for unlimited minutes
+                  </p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">
+                    Priority Tier
+                  </label>
+                  <select
+                    value={form.call_priority || 'standard'}
+                    onChange={(e) => setForm({ ...form, call_priority: e.target.value })}
+                    className="mt-1 w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-[#4285F4] outline-none transition"
+                  >
+                    <option value="standard">⚪ Standard</option>
+                    <option value="priority">🔸 Priority</option>
+                    <option value="premium">🔹 Premium</option>
+                  </select>
+                  <p className="text-xs text-gray-400 mt-1">
+                    {form.call_priority === 'premium' ? '🔹 Highest priority – calls processed first' :
+                     form.call_priority === 'priority' ? '🔸 High priority – processed before standard' :
+                     '⚪ Standard priority – normal queue order'}
+                  </p>
+                </div>
+              </div>
+
+              {/* Minutes Usage Display */}
+              <div className="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
+                  <div>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">Used</p>
+                    <p className="text-xl font-bold text-gray-900 dark:text-white">
+                      {form.minutes_used || 0} min
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">Limit</p>
+                    <p className="text-xl font-bold text-gray-900 dark:text-white">
+                      {form.call_minute_limit === 0 ? '♾️' : (form.call_minute_limit || 500)} min
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">Remaining</p>
+                    <p className={`text-xl font-bold ${
+                      remainingMinutes < 50 && remainingMinutes > 0
+                        ? 'text-red-600 dark:text-red-400'
+                        : remainingMinutes === 0
+                        ? 'text-red-600 dark:text-red-400'
+                        : 'text-green-600 dark:text-green-400'
+                    }`}>
+                      {form.call_minute_limit === 0 ? '♾️' : remainingMinutes} min
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">Next Reset</p>
+                    <p className="text-sm font-semibold text-gray-900 dark:text-white">
+                      {form.next_reset_date ? new Date(form.next_reset_date).toLocaleDateString() : 'N/A'}
+                    </p>
+                    {daysUntilReset > 0 && (
+                      <p className="text-xs text-gray-400 dark:text-gray-500">{daysUntilReset} days</p>
+                    )}
+                  </div>
+                </div>
+                <div className="mt-3 text-center">
+                  <button
+                    type="button"
+                    onClick={handleResetMinutes}
+                    className="text-sm text-blue-600 dark:text-blue-400 hover:underline transition"
+                  >
+                    Reset Minutes Used
+                  </button>
+                  <span className="text-xs text-gray-400 ml-3">
+                    Plan start: {form.plan_start_date ? new Date(form.plan_start_date).toLocaleDateString() : 'N/A'}
+                  </span>
+                </div>
               </div>
             </div>
           </div>
@@ -340,7 +458,7 @@ export default function EditClientForm({ client }: { client: Client }) {
             </div>
           </div>
 
-          {/* Toggles - GBP fields REMOVED */}
+          {/* Toggles */}
           <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100 transition duration-300 hover:shadow-md">
             <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
               <GooglePill />

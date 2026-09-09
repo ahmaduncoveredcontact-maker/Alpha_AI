@@ -44,6 +44,13 @@ interface Client {
   cal_event_slug?: string;
   day_times?: { [key: string]: { start: string; end: string } };
   gbp_access_token?: string;
+  // ✅ NEW: Call minute fields
+  call_minute_limit?: number;
+  call_priority?: string;
+  minutes_used?: number;
+  plan_start_date?: string;
+  next_reset_date?: string;
+  last_reset_date?: string;
 }
 
 export default function ClientDashboardClient({
@@ -220,6 +227,12 @@ export default function ClientDashboardClient({
     }
   };
 
+  // Calculate remaining minutes
+  const remainingMinutes = Math.max(0, (client.call_minute_limit || 500) - (client.minutes_used || 0));
+  const daysUntilReset = client.next_reset_date
+    ? Math.ceil((new Date(client.next_reset_date).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))
+    : 0;
+
   return (
     <div className="flex min-h-screen bg-gray-50 dark:bg-gray-950">
       {/* Top Navbar */}
@@ -253,6 +266,58 @@ export default function ClientDashboardClient({
 
       {/* Main Content */}
       <main className="flex-1 p-4 sm:p-6 lg:p-8 overflow-y-auto w-full mt-16 lg:mt-16 min-h-screen lg:ml-64">
+        {/* ======== CALL MINUTES SECTION ======== */}
+        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-6 border border-gray-100 dark:border-gray-700 mb-6">
+          <h3 className="font-semibold text-gray-800 dark:text-white mb-4 flex items-center gap-2">
+            📞 Call Minutes
+          </h3>
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4">
+            <div>
+              <p className="text-sm text-gray-500 dark:text-gray-400">Used</p>
+              <p className="text-xl font-bold text-gray-900 dark:text-white">{client.minutes_used || 0} min</p>
+            </div>
+            <div>
+              <p className="text-sm text-gray-500 dark:text-gray-400">Limit</p>
+              <p className="text-xl font-bold text-gray-900 dark:text-white">
+                {client.call_minute_limit === 0 ? '♾️ Unlimited' : `${client.call_minute_limit || 500} min`}
+              </p>
+            </div>
+            <div>
+              <p className="text-sm text-gray-500 dark:text-gray-400">Remaining</p>
+              <p className={`text-xl font-bold ${
+                remainingMinutes < 50 && remainingMinutes > 0
+                  ? 'text-red-600 dark:text-red-400'
+                  : remainingMinutes === 0
+                  ? 'text-red-600 dark:text-red-400'
+                  : 'text-green-600 dark:text-green-400'
+              }`}>
+                {client.call_minute_limit === 0 ? '♾️' : remainingMinutes} min
+              </p>
+            </div>
+            <div>
+              <p className="text-sm text-gray-500 dark:text-gray-400">Priority</p>
+              <span className={`inline-flex px-3 py-1 rounded-full text-sm font-medium ${
+                client.call_priority === 'premium'
+                  ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400'
+                  : client.call_priority === 'priority'
+                  ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
+                  : 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300'
+              }`}>
+                {client.call_priority || 'Standard'}
+              </span>
+            </div>
+            <div>
+              <p className="text-sm text-gray-500 dark:text-gray-400">Next Reset</p>
+              <p className="text-sm font-semibold text-gray-900 dark:text-white">
+                {client.next_reset_date ? new Date(client.next_reset_date).toLocaleDateString() : 'N/A'}
+              </p>
+              {daysUntilReset > 0 && (
+                <p className="text-xs text-gray-400 dark:text-gray-500">{daysUntilReset} days remaining</p>
+              )}
+            </div>
+          </div>
+        </div>
+
         {renderContent()}
       </main>
 
