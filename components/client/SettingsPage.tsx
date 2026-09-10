@@ -120,10 +120,7 @@ export default function SettingsPage({ client }: { client: ClientForSettings }) 
             <span className="text-gray-500 dark:text-gray-400">Business:</span>{' '}
             <span className="text-gray-900 dark:text-white font-medium">{client.business_name}</span>
           </p>
-          <p>
-            <span className="text-gray-500 dark:text-gray-400">Slug:</span>{' '}
-            <span className="text-gray-900 dark:text-white font-mono">{client.slug}</span>
-          </p>
+         
           <p>
             <span className="text-gray-500 dark:text-gray-400">Dashboard:</span>{' '}
             <a
