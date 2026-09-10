@@ -12,6 +12,7 @@ interface Client {
   cal_event_slug?: string;
   day_times?: { [key: string]: { start: string; end: string } };
   buffer_time?: number;
+  event_length?: number;      // ✅ NEW
 }
 
 export default function SchedulePage({
@@ -29,13 +30,13 @@ export default function SchedulePage({
     working_hours_end: client.working_hours_end || '17:00',
     timezone: client.timezone || 'America/New_York',
     buffer_time: client.buffer_time ?? 15,
+    event_length: client.event_length ?? 30,    // ✅ NEW
   });
 
   const [dayTimes, setDayTimes] = useState<{ [key: string]: { start: string; end: string } }>(
     client.day_times || {}
   );
 
-  // ✅ Sync with client prop when it changes
   useEffect(() => {
     setScheduleData({
       working_days: client.working_days || ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'],
@@ -43,11 +44,11 @@ export default function SchedulePage({
       working_hours_end: client.working_hours_end || '17:00',
       timezone: client.timezone || 'America/New_York',
       buffer_time: client.buffer_time ?? 15,
+      event_length: client.event_length ?? 30,
     });
     setDayTimes(client.day_times || {});
   }, [client]);
 
-  // ✅ Send update with ALL current data
   const sendUpdate = (data: any) => {
     const payload = {
       working_days: data.working_days ?? scheduleData.working_days,
@@ -56,8 +57,8 @@ export default function SchedulePage({
       timezone: data.timezone ?? scheduleData.timezone,
       day_times: data.day_times ?? dayTimes,
       buffer_time: data.buffer_time ?? scheduleData.buffer_time,
+      event_length: data.event_length ?? scheduleData.event_length,   // ✅ NEW
     };
-    console.log('📤 Sending schedule update:', payload);
     onUpdate(payload);
   };
 
@@ -95,12 +96,18 @@ export default function SchedulePage({
     sendUpdate(newData);
   };
 
+  const handleEventLengthChange = (minutes: number) => {     // ✅ NEW
+    const newData = { ...scheduleData, event_length: minutes };
+    setScheduleData(newData);
+    sendUpdate(newData);
+  };
+
   return (
     <div className="space-y-6">
       <div>
         <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Weekly Schedule</h2>
         <p className="text-sm text-gray-500 dark:text-gray-400">
-          Set your working hours for each day of the week
+          Set your working hours, appointment duration, and buffer time
         </p>
       </div>
 
@@ -115,6 +122,8 @@ export default function SchedulePage({
           dayTimes={dayTimes}
           buffer_time={scheduleData.buffer_time}
           onBufferTimeChange={handleBufferTimeChange}
+          event_length={scheduleData.event_length}                // ✅ NEW
+          onEventLengthChange={handleEventLengthChange}           // ✅ NEW
         />
 
         <div className="mt-6">
@@ -142,9 +151,6 @@ export default function SchedulePage({
               >
                 https://cal.com/alphaai/{client.cal_event_slug}
               </a>
-            </p>
-            <p className="text-xs text-blue-500 dark:text-blue-400 mt-1">
-              Click to edit availability, holidays, or buffer time directly in Cal.com.
             </p>
           </div>
         )}

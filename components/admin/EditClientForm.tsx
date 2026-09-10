@@ -41,6 +41,9 @@ interface Client {
   last_reset_date?: string;
   // ✅ NEW: Buffer time
   buffer_time?: number;
+
+  // ✅ NEW: Event duration
+  event_length?: number;
 }
 
 export default function EditClientForm({ client }: { client: Client }) {
@@ -90,6 +93,14 @@ export default function EditClientForm({ client }: { client: Client }) {
     setForm({
       ...form,
       buffer_time: minutes,
+    });
+  };
+
+  // ✅ NEW: Handle event length change
+  const handleEventLengthChange = (minutes: number) => {
+    setForm({
+      ...form,
+      event_length: minutes,
     });
   };
 
@@ -361,7 +372,7 @@ export default function EditClientForm({ client }: { client: Client }) {
               Weekly Schedule
             </h3>
             <div className="space-y-4">
-              <WeekScheduleView
+                            <WeekScheduleView
                 working_days={form.working_days || ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']}
                 working_hours_start={form.working_hours_start || '09:00'}
                 working_hours_end={form.working_hours_end || '17:00'}
@@ -375,9 +386,10 @@ export default function EditClientForm({ client }: { client: Client }) {
                 }}
                 onDayTimeChange={handleDayTimeChange}
                 dayTimes={dayTimes}
-                // ✅ NEW: Buffer time props
                 buffer_time={form.buffer_time ?? 15}
                 onBufferTimeChange={handleBufferTimeChange}
+                event_length={form.event_length ?? 30}                                          // ✅ NEW
+                onEventLengthChange={handleEventLengthChange}                                   // ✅ NEW
               />
 
               <div className="mt-4">

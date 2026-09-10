@@ -14,7 +14,7 @@ export async function PUT(req: NextRequest, { params }: { params: { slug: string
     const body = await req.json();
 
     const updateData: any = {};
-    ['working_hours_start', 'working_hours_end', 'working_days', 'timezone', 'day_times', 'buffer_time']
+    ['working_hours_start', 'working_hours_end', 'working_days', 'timezone', 'day_times', 'buffer_time', 'event_length']
       .forEach((k) => { if (body[k] !== undefined) updateData[k] = body[k]; });
 
     if (Object.keys(updateData).length === 0) {
@@ -30,7 +30,7 @@ export async function PUT(req: NextRequest, { params }: { params: { slug: string
 
     if (error) return NextResponse.json({ error: `DB error: ${error.message}` }, { status: 500 });
 
-    // Sync to Cal.com using the stored numeric event ID
+    // Sync to Cal.com
     const result = await ensureCalEventType(client, {
       working_hours_start: client.working_hours_start || '09:00',
       working_hours_end: client.working_hours_end || '17:00',
@@ -38,15 +38,8 @@ export async function PUT(req: NextRequest, { params }: { params: { slug: string
       timezone: client.timezone || 'America/New_York',
       day_times: client.day_times || {},
       buffer_time: client.buffer_time ?? 15,
+      event_length: client.event_length ?? 30,
     });
-
-    if (result?.eventTypeId && result.eventTypeId !== client.cal_event_id) {
-      // Save the ID if it changed (e.g., new event was created)
-      await supabaseAdmin
-        .from('clients')
-        .update({ cal_event_id: result.eventTypeId, cal_event_slug: result.eventSlug })
-        .eq('id', client.id);
-    }
 
     return NextResponse.json({ success: true, client });
   } catch (err: any) {

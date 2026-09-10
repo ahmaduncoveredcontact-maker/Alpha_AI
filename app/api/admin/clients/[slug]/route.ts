@@ -23,7 +23,6 @@ export async function PUT(
     const body = await req.json();
     console.log('📥 Admin PUT received:', JSON.stringify(body, null, 2));
 
-    // Update Supabase
     const { data: client, error } = await supabaseAdmin
       .from('clients')
       .update(body)
@@ -37,21 +36,17 @@ export async function PUT(
     }
 
     console.log('✅ Supabase updated for client:', client.slug);
-    console.log('📊 cal_event_id:', client.cal_event_id);
-    console.log('📊 cal_event_slug:', client.cal_event_slug);
 
-    // Check if schedule-related fields were updated
+    // ✅ Schedule fields now include event_length
     const scheduleFields = [
       'working_hours_start', 'working_hours_end',
-      'working_days', 'timezone', 'day_times', 'buffer_time'
+      'working_days', 'timezone', 'day_times',
+      'buffer_time', 'event_length',                  // ✅ NEW
     ];
     const hasScheduleUpdate = scheduleFields.some(field => body[field] !== undefined);
 
     console.log('🔍 Has schedule update:', hasScheduleUpdate);
-    console.log('🔍 cal_event_id truthy:', !!client.cal_event_id);
-    console.log('🔍 cal_event_slug truthy:', !!client.cal_event_slug);
 
-    // Call sync if schedule was updated AND we have a Cal.com identifier
     if (hasScheduleUpdate && (client.cal_event_id || client.cal_event_slug)) {
       console.log('🚀 Calling ensureCalEventType...');
       try {
@@ -62,10 +57,10 @@ export async function PUT(
           timezone: client.timezone || 'America/New_York',
           day_times: client.day_times || {},
           buffer_time: client.buffer_time ?? 15,
+          event_length: client.event_length ?? 30,   // ✅ NEW
         });
         console.log('✅ ensureCalEventType returned:', JSON.stringify(result));
 
-        // If a new event was created (ID changed), save it
         if (result?.eventTypeId && result.eventTypeId !== client.cal_event_id) {
           await supabaseAdmin
             .from('clients')

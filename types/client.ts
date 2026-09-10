@@ -44,13 +44,16 @@ export interface Client {
   timezone?: string;
 
   // ✅ Cal.com identifiers
-  cal_event_id?: number;       // numeric ID (primary, reliable)
-  cal_event_slug?: string;     // slug (secondary, human-readable)
+  cal_event_id?: number;
+  cal_event_slug?: string;
 
   day_times?: { [key: string]: { start: string; end: string } };
 
-  // Buffer time between appointments (in minutes)
-  buffer_time?: number;        // default 15
+  // ✅ Appointment duration (minutes)
+  event_length?: number;      // default 30
+
+  // ✅ Buffer time (minutes)
+  buffer_time?: number;       // default 15
 
   // Google OAuth fields
   gbp_access_token?: string;

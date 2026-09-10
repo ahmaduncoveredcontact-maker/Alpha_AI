@@ -40,6 +40,7 @@ export async function POST(req: NextRequest) {
       phone: body.phone,
       timezone: body.timezone || 'America/New_York',
       buffer_time: body.buffer_time ?? 15,
+      event_length: body.event_length ?? 30,     // ✅ NEW
     });
 
     if (!calEvent) {
@@ -53,7 +54,7 @@ export async function POST(req: NextRequest) {
       const assistant = await vapi.createAssistant({
         name: body.business_name,
         instructions: body.voice_instructions,
-        calEventId: calEvent?.eventTypeId,   // ✅ Pass numeric ID — tool auto-attached
+        calEventId: calEvent?.eventTypeId,
       });
       vapiAssistantId = assistant.assistantId;
     } catch (error: any) {
@@ -103,6 +104,7 @@ export async function POST(req: NextRequest) {
         timezone: body.timezone || 'America/New_York',
         day_times: body.day_times || {},
         buffer_time: body.buffer_time ?? 15,
+        event_length: body.event_length ?? 30,   // ✅ NEW
         cal_event_id: calEvent?.eventTypeId || null,
         cal_event_slug: calEvent?.slug || null,
       })

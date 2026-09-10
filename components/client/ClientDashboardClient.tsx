@@ -44,6 +44,7 @@ interface Client {
   cal_event_slug?: string;
   day_times?: { [key: string]: { start: string; end: string } };
   gbp_access_token?: string;
+  
   // ✅ NEW: Call minute fields
   call_minute_limit?: number;
   call_priority?: string;
@@ -51,6 +52,10 @@ interface Client {
   plan_start_date?: string;
   next_reset_date?: string;
   last_reset_date?: string;
+  // ✅ NEW: Appointment duration
+  event_length?: number;
+  // ✅ NEW: Buffer time
+  buffer_time?: number;
 }
 
 export default function ClientDashboardClient({

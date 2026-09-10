@@ -2,7 +2,7 @@
 
 const CALCOM_API_KEY = process.env.CALCOM_API_KEY;
 const CALCOM_USERNAME = process.env.CALCOM_USERNAME;
-const CALCOM_API_VERSION = '2024-06-11'; // ✅ REQUIRED
+const CALCOM_API_VERSION = '2024-06-11';
 
 export async function ensureCalEventType(client: any, scheduleData: any) {
   if (!CALCOM_API_KEY || !CALCOM_USERNAME) {
@@ -21,9 +21,9 @@ export async function ensureCalEventType(client: any, scheduleData: any) {
     .map((dayName) => {
       const dayTime = scheduleData.day_times?.[dayName];
       return {
-        days: [dayName],                              // ✅ ["Monday"] string array
-        startTime: dayTime?.start || defaultStart,    // ✅ "HH:MM"
-        endTime: dayTime?.end || defaultEnd,          // ✅ "HH:MM"
+        days: [dayName],
+        startTime: dayTime?.start || defaultStart,
+        endTime: dayTime?.end || defaultEnd,
       };
     });
 
@@ -31,6 +31,7 @@ export async function ensureCalEventType(client: any, scheduleData: any) {
 
   const eventTimeZone = scheduleData.timezone || client.timezone || 'America/New_York';
   const bufferTime = scheduleData.buffer_time ?? client.buffer_time ?? 15;
+  const eventLength = scheduleData.event_length ?? client.event_length ?? 30; // ✅ NEW
 
   let eventTypeId: number | null = client.cal_event_id || null;
   let eventSlug: string = client.cal_event_slug || client.slug;
@@ -41,7 +42,7 @@ export async function ensureCalEventType(client: any, scheduleData: any) {
     const buildPayload = (slugToUse: string) => ({
       title: `${client.business_name} Booking`,
       slug: slugToUse,
-      length: 30,
+      length: eventLength,        // ✅ use event_length
       timeZone: eventTimeZone,
       beforeEventBuffer: bufferTime,
       afterEventBuffer: bufferTime,
@@ -90,7 +91,7 @@ export async function ensureCalEventType(client: any, scheduleData: any) {
     console.log(`✅ Event created: ID=${eventTypeId}`);
   }
 
-  // ── STEP 2: Get the user's current default schedule ID ──
+  // ── STEP 2: Get current default schedule ID ──
   const meRes = await fetch('https://api.cal.com/v2/me', {
     headers: {
       Authorization: `Bearer ${CALCOM_API_KEY}`,
@@ -101,7 +102,7 @@ export async function ensureCalEventType(client: any, scheduleData: any) {
   const oldScheduleId: number | null = me?.defaultScheduleId ?? null;
   console.log(`📊 Current default schedule ID: ${oldScheduleId}`);
 
-  // ── STEP 3: Delete the old schedule (frees the isDefault slot) ──
+  // ── STEP 3: Delete the old schedule ──
   if (oldScheduleId) {
     console.log(`🗑️ Deleting old schedule ${oldScheduleId}...`);
     const delRes = await fetch(`https://api.cal.com/v2/schedules/${oldScheduleId}`, {
@@ -114,7 +115,7 @@ export async function ensureCalEventType(client: any, scheduleData: any) {
     console.log(delRes.ok ? '✅ Old schedule deleted' : '⚠️ Delete failed (continuing)');
   }
 
-  // ── STEP 4: Create the new schedule with correct availability ──
+  // ── STEP 4: Create the new schedule ──
   console.log('🆕 Creating new schedule...');
   const createRes = await fetch('https://api.cal.com/v2/schedules', {
     method: 'POST',
@@ -138,9 +139,8 @@ export async function ensureCalEventType(client: any, scheduleData: any) {
   const newScheduleData = await createRes.json();
   const newScheduleId: number = newScheduleData.data.id;
   console.log(`✅ New schedule created: ${newScheduleId}`);
-  console.log(`🔎 Stored availability:`, JSON.stringify(newScheduleData.data.availability));
 
-  // ── STEP 5: Attach new schedule + buffer to event type ──
+  // ── STEP 5: Attach new schedule + buffer + length to event type ──
   const patchEventRes = await fetch(`https://api.cal.com/v2/event-types/${eventTypeId}`, {
     method: 'PATCH',
     headers: {
@@ -151,6 +151,7 @@ export async function ensureCalEventType(client: any, scheduleData: any) {
     body: JSON.stringify({
       scheduleId: newScheduleId,
       timeZone: eventTimeZone,
+      length: eventLength,                // ✅ NEW
       beforeEventBuffer: bufferTime,
       afterEventBuffer: bufferTime,
     }),
@@ -159,7 +160,7 @@ export async function ensureCalEventType(client: any, scheduleData: any) {
   if (!patchEventRes.ok) {
     console.error('⚠️ Event type attach failed:', await patchEventRes.text());
   } else {
-    console.log(`✅ Event type ${eventTypeId} attached to schedule ${newScheduleId}`);
+    console.log(`✅ Event type ${eventTypeId} updated: length=${eventLength}, buffer=${bufferTime}`);
   }
 
   console.log(`🎉 Cal.com sync complete for ${client.slug}`);
