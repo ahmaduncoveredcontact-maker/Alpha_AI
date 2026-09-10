@@ -1,3 +1,5 @@
+// types/client.ts
+
 export interface Client {
   id: string;
   business_name: string;
@@ -40,11 +42,15 @@ export interface Client {
   working_hours_end?: string;
   working_days?: string[];
   timezone?: string;
-  cal_event_slug?: string;
+
+  // ✅ Cal.com identifiers
+  cal_event_id?: number;       // numeric ID (primary, reliable)
+  cal_event_slug?: string;     // slug (secondary, human-readable)
+
   day_times?: { [key: string]: { start: string; end: string } };
-  
-  // ✅ NEW: Buffer time between appointments (in minutes)
-  buffer_time?: number; // default 15
+
+  // Buffer time between appointments (in minutes)
+  buffer_time?: number;        // default 15
 
   // Google OAuth fields
   gbp_access_token?: string;

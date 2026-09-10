@@ -2,40 +2,18 @@ import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { generateSlug, generateAccessCode, generateWebhookSecret } from '@/lib/utils/helpers';
 import { vapi } from '@/lib/vapi/client';
+import { createCalEventForClient } from '@/lib/calcom/create-event';
 import { createTab } from '@/lib/sheets';
 import { email } from '@/lib/email/resend';
 import bcrypt from 'bcryptjs';
 
-// Helper to generate a unique slug
 async function getUniqueSlug(baseSlug: string): Promise<string> {
   let slug = baseSlug;
   let counter = 1;
-  let exists = true;
-  while (exists) {
-    const { data, error } = await supabaseAdmin
-      .from('clients')
-      .select('slug')
-      .eq('slug', slug)
-      .single();
-    if (error || !data) {
-      exists = false;
-    } else {
-      slug = `${baseSlug}-${counter}`;
-      counter++;
-    }
-  }
-  return slug;
-}
-
-export async function GET() {
-  try {
-    const { data, error } = await supabaseAdmin.from('clients').select('*').order('created_at', { ascending: false });
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
-    }
-    return NextResponse.json(data);
-  } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: 500 });
+  while (true) {
+    const { data } = await supabaseAdmin.from('clients').select('slug').eq('slug', slug).single();
+    if (!data) return slug;
+    slug = `${baseSlug}-${counter++}`;
   }
 }
 
@@ -54,28 +32,42 @@ export async function POST(req: NextRequest) {
     const webhookSecret = generateWebhookSecret();
     const webhookUrl = `${process.env.NEXT_PUBLIC_BASE_URL}/api/webhook/lead/${webhookSecret}`;
 
-    // ✅ Generate calEventSlug from business name (for OmniDimensions booking tool)
-    const calEventSlug = generateSlug(body.business_name);
+    // ── STEP 1: Create Cal.com event FIRST ──
+    console.log(`📅 Creating Cal.com event for ${slug}...`);
+    const calEvent = await createCalEventForClient({
+      business_name: body.business_name,
+      slug,
+      phone: body.phone,
+      timezone: body.timezone || 'America/New_York',
+      buffer_time: body.buffer_time ?? 15,
+    });
 
-    // 1. Create OmniDimensions assistant (with calEventSlug)
+    if (!calEvent) {
+      console.warn('⚠️ Cal.com event creation failed — continuing without it');
+    }
+
+    // ── STEP 2: Create OmniDimensions agent WITH the Cal.com tool ──
+    console.log(`🤖 Creating OmniDimensions agent for ${slug}...`);
     let vapiAssistantId: string | undefined;
     try {
       const assistant = await vapi.createAssistant({
         name: body.business_name,
         instructions: body.voice_instructions,
-        calEventSlug: calEventSlug,
+        calEventId: calEvent?.eventTypeId,   // ✅ Pass numeric ID — tool auto-attached
       });
       vapiAssistantId = assistant.assistantId;
     } catch (error: any) {
-      console.error('OmniDimensions assistant creation error:', error);
-      return NextResponse.json({ error: `Assistant creation failed: ${error.message || 'Unknown error'}` }, { status: 500 });
+      console.error('OmniDimensions agent creation error:', error);
+      return NextResponse.json(
+        { error: `Agent creation failed: ${error.message}` },
+        { status: 500 }
+      );
     }
 
-    // 2. Calculate plan dates
+    // ── STEP 3: Insert client into Supabase with all IDs ──
     const planStartDate = new Date();
     const nextResetDate = new Date(planStartDate.getTime() + 30 * 24 * 60 * 60 * 1000);
 
-    // 3. Insert client record
     const { data: client, error } = await supabaseAdmin
       .from('clients')
       .insert({
@@ -99,15 +91,20 @@ export async function POST(req: NextRequest) {
         outbound_calling_enabled: body.outbound_calling_enabled || false,
         consent_confirmed: body.consent_confirmed || false,
         manager_access_granted: body.manager_access_granted || false,
-        // ✅ New fields
         call_minute_limit: body.call_minute_limit || 500,
         call_priority: body.call_priority || 'standard',
         minutes_used: 0,
         plan_start_date: planStartDate.toISOString(),
         next_reset_date: nextResetDate.toISOString(),
         last_reset_date: planStartDate.toISOString(),
-        cal_event_slug: calEventSlug,
-        buffer_time: body.buffer_time || 15, // ✅ NEW: Buffer time default 15 minutes
+        working_hours_start: body.working_hours_start || '09:00',
+        working_hours_end: body.working_hours_end || '17:00',
+        working_days: body.working_days || ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'],
+        timezone: body.timezone || 'America/New_York',
+        day_times: body.day_times || {},
+        buffer_time: body.buffer_time ?? 15,
+        cal_event_id: calEvent?.eventTypeId || null,
+        cal_event_slug: calEvent?.slug || null,
       })
       .select()
       .single();
@@ -116,68 +113,24 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: `DB insert failed: ${error.message}` }, { status: 500 });
     }
 
-    // 4. Create Cal.com event type with buffer time
-    if (process.env.CALCOM_API_KEY && process.env.CALCOM_USERNAME) {
-      try {
-        const calRes = await fetch('https://api.cal.com/v2/event-types', {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${process.env.CALCOM_API_KEY}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            title: `${client.business_name} Booking`,
-            slug: slug,
-            length: 30,
-            timeZone: client.timezone || 'America/New_York',
-            beforeEventBuffer: client.buffer_time || 15,
-            afterEventBuffer: client.buffer_time || 15,
-            locations: [{ type: 'phone', phoneNumber: client.phone || '' }],
-            bookingFields: [
-              { name: 'name', type: 'text', required: true },
-              { name: 'phone', type: 'phone', required: true },
-              { name: 'notes', type: 'textarea' },
-            ],
-          }),
-        });
-        if (calRes.ok) {
-          const calData = await calRes.json();
-          const calSlug = calData.data?.slug || slug;
-          await supabaseAdmin
-            .from('clients')
-            .update({ cal_event_slug: calSlug })
-            .eq('id', client.id);
-        }
-      } catch (calError) {
-        console.warn('⚠️ Cal.com event creation failed:', calError);
-      }
-    }
-
-    // 5. Create Google Sheet tab (non‑critical)
+    // ── STEP 4: Create sheet tab + welcome email ──
     try {
       await createTab(slug);
-      console.log(`✅ Sheet tab created for ${slug}`);
-    } catch (error: any) {
-      console.error(`⚠️ Sheet creation warning for ${slug}:`, error.message);
+    } catch (e: any) {
+      console.error(`⚠️ Sheet creation warning: ${e.message}`);
     }
 
-    // 6. Send welcome email
     if (client.email) {
       try {
         await email.sendWelcome(client.email, client.business_name, accessCode);
-      } catch (error: any) {
-        console.error('Email sending error:', error);
+      } catch (e: any) {
+        console.error('Email sending error:', e);
       }
     }
 
-    return NextResponse.json({
-      client,
-      accessCode,
-      webhookUrl,
-    }, { status: 201 });
-
+    return NextResponse.json({ client, accessCode, webhookUrl }, { status: 201 });
   } catch (error: any) {
     console.error('Unexpected error in client creation:', error);
-    return NextResponse.json({ error: `Internal server error: ${error.message || 'Unknown'}` }, { status: 500 });
+    return NextResponse.json({ error: `Internal server error: ${error.message}` }, { status: 500 });
   }
 }

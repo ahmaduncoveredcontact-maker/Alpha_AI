@@ -9,98 +9,171 @@ export async function ensureCalEventType(client: any, scheduleData: any) {
     return null;
   }
 
-  const baseSlug = client.slug;
-  let slug = baseSlug;
-  let attempts = 0;
-  let createdOrUpdated = false;
-  let finalSlug = slug;
+  const { supabaseAdmin } = await import('@/lib/supabase/admin');
 
-  while (!createdOrUpdated && attempts < 5) {
-    attempts++;
-    if (attempts > 1) {
-      slug = `${baseSlug}-${Date.now()}-${attempts}`;
-    }
+  const defaultStart = scheduleData.working_hours_start || '09:00';
+  const defaultEnd = scheduleData.working_hours_end || '17:00';
+  const daysOfWeek = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
 
-    const defaultStart = scheduleData.working_hours_start || '09:00';
-    const defaultEnd = scheduleData.working_hours_end || '17:00';
-    const daysOfWeek = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+  const availability = daysOfWeek.map((day) => {
+    const dayName = day.charAt(0).toUpperCase() + day.slice(1);
+    const dayTime = scheduleData.day_times?.[dayName] || { start: defaultStart, end: defaultEnd };
+    const enabled = scheduleData.working_days?.includes(dayName) || false;
+    return {
+      day,
+      startTime: dayTime.start || defaultStart,
+      endTime: dayTime.end || defaultEnd,
+      enabled,
+    };
+  });
 
-    const availability = daysOfWeek.map((day) => {
-      const dayName = day.charAt(0).toUpperCase() + day.slice(1);
-      const dayTime = scheduleData.day_times?.[dayName] || { start: defaultStart, end: defaultEnd };
-      const enabled = scheduleData.working_days?.includes(dayName) || false;
-      return {
-        day: day,
-        startTime: dayTime.start || defaultStart,
-        endTime: dayTime.end || defaultEnd,
-        enabled: enabled,
-      };
-    });
+  const eventTimeZone = scheduleData.timezone || client.timezone || 'America/New_York';
+  const bufferTime = scheduleData.buffer_time ?? client.buffer_time ?? 15;
 
-    const eventPayload = {
+  let eventTypeId: number | null = client.cal_event_id || null;
+  let eventSlug: string = client.cal_event_slug || client.slug;
+
+  // ────────────────────────────────────────────────────────────────
+  // STEP 1: Create event type ONCE if we don't have an ID yet
+  // ────────────────────────────────────────────────────────────────
+  if (!eventTypeId) {
+    console.log('🆕 No cal_event_id — creating event type for the first time...');
+
+    const buildPayload = (slugToUse: string) => ({
       title: `${client.business_name} Booking`,
-      slug: slug,
+      slug: slugToUse,
       length: 30,
-      timeZone: scheduleData.timezone || client.timezone || 'America/New_York',
-      beforeEventBuffer: scheduleData.buffer_time ?? client.buffer_time ?? 15,
-      afterEventBuffer: scheduleData.buffer_time ?? client.buffer_time ?? 15,
+      timeZone: eventTimeZone,
+      beforeEventBuffer: bufferTime,
+      afterEventBuffer: bufferTime,
       locations: [{ type: 'phone', phoneNumber: client.phone || '' }],
       bookingFields: [
         { name: 'name', type: 'text', required: true },
         { name: 'phone', type: 'phone', required: true },
         { name: 'notes', type: 'textarea' },
       ],
-      schedule: {
-        name: `Schedule for ${slug}`,
-        timeZone: scheduleData.timezone || client.timezone || 'America/New_York',
-        availability: availability,
-      },
-    };
+    });
 
     const createRes = await fetch('https://api.cal.com/v2/event-types', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${CALCOM_API_KEY}`,
+        Authorization: `Bearer ${CALCOM_API_KEY}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify(eventPayload),
+      body: JSON.stringify(buildPayload(client.slug)),
     });
 
-    if (createRes.ok) {
-      const data = await createRes.json();
-      finalSlug = data.data?.slug || slug;
-      console.log(`✅ Cal.com event type created: ${finalSlug}`);
-      createdOrUpdated = true;
-      break;
+    if (!createRes.ok) {
+      const errText = await createRes.text();
+      if (errText.includes('already has an event type with this slug')) {
+        console.log('⚠️ Slug in use — trying with a suffix...');
+        const retryRes = await fetch('https://api.cal.com/v2/event-types', {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${CALCOM_API_KEY}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(buildPayload(`${client.slug}-${Date.now()}`)),
+        });
+        if (!retryRes.ok) {
+          console.error('❌ Cal.com creation failed:', await retryRes.text());
+          return null;
+        }
+        const retryData = await retryRes.json();
+        eventTypeId = retryData.data.id;
+        eventSlug = retryData.data.slug;
+      } else {
+        console.error('❌ Cal.com creation failed:', errText);
+        return null;
+      }
+    } else {
+      const createData = await createRes.json();
+      eventTypeId = createData.data.id;
+      eventSlug = createData.data.slug;
     }
 
-    const errText = await createRes.text();
-    if (errText.includes('already has an event type with this slug')) {
-      console.log(`⚠️ Slug "${slug}" already taken, trying a new one...`);
-      continue;
+    await supabaseAdmin
+      .from('clients')
+      .update({ cal_event_id: eventTypeId, cal_event_slug: eventSlug })
+      .eq('id', client.id);
+
+    console.log(`✅ Cal.com event type created: ID=${eventTypeId}, slug=${eventSlug}`);
+  }
+
+  // ────────────────────────────────────────────────────────────────
+  // STEP 2: Update the schedule (create or update)
+  // ────────────────────────────────────────────────────────────────
+  const schedulePayload = {
+    name: `Schedule for ${client.slug}`,
+    timeZone: eventTimeZone,
+    availability,
+  };
+
+  const getRes = await fetch(`https://api.cal.com/v2/event-types/${eventTypeId}`, {
+    headers: { Authorization: `Bearer ${CALCOM_API_KEY}` },
+  });
+  if (!getRes.ok) {
+    console.error('❌ Failed to fetch event type by ID:', await getRes.text());
+    return null;
+  }
+  const existing = (await getRes.json()).data;
+  let scheduleId = existing.scheduleId;
+
+  if (!scheduleId) {
+    const createScheduleRes = await fetch('https://api.cal.com/v2/schedules', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${CALCOM_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(schedulePayload),
+    });
+    if (createScheduleRes.ok) {
+      scheduleId = (await createScheduleRes.json()).data.id;
+      console.log(`✅ Schedule created: ${scheduleId}`);
     } else {
-      console.error(`❌ Cal.com event creation failed: ${errText}`);
-      return null;
+      console.error('❌ Schedule creation failed:', await createScheduleRes.text());
+    }
+  } else {
+    const updateScheduleRes = await fetch(`https://api.cal.com/v2/schedules/${scheduleId}`, {
+      method: 'PATCH',
+      headers: {
+        Authorization: `Bearer ${CALCOM_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(schedulePayload),
+    });
+    if (updateScheduleRes.ok) {
+      console.log(`✅ Schedule updated: ${scheduleId}`);
+    } else {
+      console.error('❌ Schedule update failed:', await updateScheduleRes.text());
     }
   }
 
-  if (!createdOrUpdated) {
-    console.error(`❌ Failed to create event type after ${attempts} attempts.`);
+  // ────────────────────────────────────────────────────────────────
+  // STEP 3: PATCH the event type by ID (buffer + timezone + schedule)
+  // ────────────────────────────────────────────────────────────────
+  const updatePayload: any = {
+    timeZone: eventTimeZone,
+    beforeEventBuffer: bufferTime,
+    afterEventBuffer: bufferTime,
+  };
+  if (scheduleId) updatePayload.scheduleId = scheduleId;
+
+  const updateRes = await fetch(`https://api.cal.com/v2/event-types/${eventTypeId}`, {
+    method: 'PATCH',
+    headers: {
+      Authorization: `Bearer ${CALCOM_API_KEY}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(updatePayload),
+  });
+
+  if (!updateRes.ok) {
+    console.error('❌ Event type update failed:', await updateRes.text());
     return null;
   }
 
-  // If the slug changed, update Supabase
-  if (finalSlug !== client.cal_event_slug) {
-    const { supabaseAdmin } = await import('@/lib/supabase/admin');
-    await supabaseAdmin
-      .from('clients')
-      .update({ cal_event_slug: finalSlug })
-      .eq('id', client.id);
-    console.log(`📌 Updated cal_event_slug to: ${finalSlug}`);
-  }
-
-  return { slug: finalSlug };
+  console.log(`✅ Cal.com event type updated: ID=${eventTypeId}`);
+  return { eventTypeId, eventSlug };
 }
-
-// ✅ ALIAS for backward compatibility
-export const updateCalEventType = ensureCalEventType;
