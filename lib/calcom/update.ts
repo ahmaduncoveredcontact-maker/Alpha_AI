@@ -13,19 +13,31 @@ export async function ensureCalEventType(client: any, scheduleData: any) {
 
   const defaultStart = scheduleData.working_hours_start || '09:00';
   const defaultEnd = scheduleData.working_hours_end || '17:00';
-  const daysOfWeek = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
 
-  const availability = daysOfWeek.map((day) => {
-    const dayName = day.charAt(0).toUpperCase() + day.slice(1);
-    const dayTime = scheduleData.day_times?.[dayName] || { start: defaultStart, end: defaultEnd };
-    const enabled = scheduleData.working_days?.includes(dayName) || false;
-    return {
-      days: [day],
-      startTime: dayTime.start || defaultStart,
-      endTime: dayTime.end || defaultEnd,
-      isEnabled: enabled,
-    };
+  // Day index order for Cal.com: 0=Sun, 1=Mon, ..., 6=Sat
+  const dayMap = [
+    { key: 'sunday',    name: 'Sunday' },
+    { key: 'monday',    name: 'Monday' },
+    { key: 'tuesday',   name: 'Tuesday' },
+    { key: 'wednesday', name: 'Wednesday' },
+    { key: 'thursday',  name: 'Thursday' },
+    { key: 'friday',    name: 'Friday' },
+    { key: 'saturday',  name: 'Saturday' },
+  ];
+
+  // ✅ Build availability as 7-element indexed array (Cal.com v2 format)
+  const availability: any[] = dayMap.map(({ name }) => {
+    const enabled = scheduleData.working_days?.includes(name) || false;
+    if (!enabled) return [];
+
+    const dayTime = scheduleData.day_times?.[name];
+    const start = dayTime?.start || defaultStart;
+    const end = dayTime?.end || defaultEnd;
+
+    return [{ start, end }];   // ✅ { start: "HH:MM", end: "HH:MM" }
   });
+
+  console.log('📅 Availability payload:', JSON.stringify(availability));
 
   const eventTimeZone = scheduleData.timezone || client.timezone || 'America/New_York';
   const bufferTime = scheduleData.buffer_time ?? client.buffer_time ?? 15;
@@ -33,23 +45,9 @@ export async function ensureCalEventType(client: any, scheduleData: any) {
   let eventTypeId: number | null = client.cal_event_id || null;
   let eventSlug: string = client.cal_event_slug || client.slug;
 
-  // ── STEP 1: Find the user's default schedule ID ──
-  const meRes = await fetch('https://api.cal.com/v2/me', {
-    headers: { Authorization: `Bearer ${CALCOM_API_KEY}` },
-  });
-
-  let userScheduleId: number | null = null;
-
-  if (meRes.ok) {
-    const me = (await meRes.json()).data;
-    userScheduleId = me?.defaultScheduleId ?? null;
-    console.log(`📊 User default schedule ID: ${userScheduleId}`);
-  }
-
-  // ── STEP 2: Create event type if needed ──
+  // ── STEP 1: Create event type if needed ──
   if (!eventTypeId) {
     console.log('🆕 Creating event type...');
-
     const buildPayload = (slugToUse: string) => ({
       title: `${client.business_name} Booking`,
       slug: slugToUse,
@@ -63,7 +61,6 @@ export async function ensureCalEventType(client: any, scheduleData: any) {
         { name: 'phone', type: 'phone', required: true },
         { name: 'notes', type: 'textarea' },
       ],
-      ...(userScheduleId ? { scheduleId: userScheduleId } : {}),
     });
 
     let res = await fetch('https://api.cal.com/v2/event-types', {
@@ -71,7 +68,6 @@ export async function ensureCalEventType(client: any, scheduleData: any) {
       headers: { Authorization: `Bearer ${CALCOM_API_KEY}`, 'Content-Type': 'application/json' },
       body: JSON.stringify(buildPayload(client.slug)),
     });
-
     if (!res.ok) {
       const errText = await res.text();
       if (errText.includes('already has an event type with this slug')) {
@@ -96,21 +92,29 @@ export async function ensureCalEventType(client: any, scheduleData: any) {
     console.log(`✅ Event created: ID=${eventTypeId}`);
   }
 
-  // ── STEP 3: Update the user's default schedule with the new availability ──
-  if (!userScheduleId) {
-    console.error('❌ No default schedule found for user.');
+  // ── STEP 2: Get the schedule ID ──
+  const meRes = await fetch('https://api.cal.com/v2/me', {
+    headers: { Authorization: `Bearer ${CALCOM_API_KEY}` },
+  });
+  const me = meRes.ok ? (await meRes.json()).data : null;
+  const scheduleId: number | null = me?.defaultScheduleId ?? null;
+  console.log(`📊 User default schedule ID: ${scheduleId}`);
+
+  if (!scheduleId) {
+    console.error('❌ No default schedule found.');
     return null;
   }
 
+  // ── STEP 3: Update the schedule with the CORRECT availability format ──
   const schedulePayload = {
     name: `Schedule for ${client.slug}`,
     timeZone: eventTimeZone,
     isDefault: true,
-    availability,
+    availability,               // ✅ 7-element indexed array
   };
 
-  console.log(`🔄 Updating user default schedule ${userScheduleId}...`);
-  const updSchedRes = await fetch(`https://api.cal.com/v2/schedules/${userScheduleId}`, {
+  console.log(`🔄 Updating schedule ${scheduleId}...`);
+  const updSchedRes = await fetch(`https://api.cal.com/v2/schedules/${scheduleId}`, {
     method: 'PATCH',
     headers: { Authorization: `Bearer ${CALCOM_API_KEY}`, 'Content-Type': 'application/json' },
     body: JSON.stringify(schedulePayload),
@@ -120,10 +124,12 @@ export async function ensureCalEventType(client: any, scheduleData: any) {
     console.error('❌ Schedule update failed:', await updSchedRes.text());
     return null;
   }
-  console.log(`✅ Schedule ${userScheduleId} updated`);
 
-  // ── STEP 4: Update buffer + timezone on the event type ──
-  const updEventRes = await fetch(`https://api.cal.com/v2/event-types/${eventTypeId}`, {
+  const updSchedData = await updSchedRes.json();
+  console.log('🔎 Stored availability:', JSON.stringify(updSchedData.data?.availability));
+
+  // ── STEP 4: Update buffer + timezone on event type ──
+  await fetch(`https://api.cal.com/v2/event-types/${eventTypeId}`, {
     method: 'PATCH',
     headers: { Authorization: `Bearer ${CALCOM_API_KEY}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -133,11 +139,6 @@ export async function ensureCalEventType(client: any, scheduleData: any) {
     }),
   });
 
-  if (!updEventRes.ok) {
-    console.error('❌ Event type update failed:', await updEventRes.text());
-    return null;
-  }
-
-  console.log(`✅ Cal.com updated: eventType=${eventTypeId}, schedule=${userScheduleId}`);
+  console.log(`✅ Cal.com updated: eventType=${eventTypeId}, schedule=${scheduleId}`);
   return { eventTypeId, eventSlug };
-}
+}s
