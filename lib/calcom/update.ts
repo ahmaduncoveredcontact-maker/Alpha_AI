@@ -2,6 +2,7 @@
 
 const CALCOM_API_KEY = process.env.CALCOM_API_KEY;
 const CALCOM_USERNAME = process.env.CALCOM_USERNAME;
+const CALCOM_API_VERSION = '2024-06-11'; // ✅ REQUIRED
 
 export async function ensureCalEventType(client: any, scheduleData: any) {
   if (!CALCOM_API_KEY || !CALCOM_USERNAME) {
@@ -14,31 +15,19 @@ export async function ensureCalEventType(client: any, scheduleData: any) {
   const defaultStart = scheduleData.working_hours_start || '09:00';
   const defaultEnd = scheduleData.working_hours_end || '17:00';
 
-  const dayOrder = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
-  const dayDisplay = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+  // ✅ Build availability with string day names
+  const availability = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+    .filter((dayName) => scheduleData.working_days?.includes(dayName))
+    .map((dayName) => {
+      const dayTime = scheduleData.day_times?.[dayName];
+      return {
+        days: [dayName],                              // ✅ ["Monday"] string array
+        startTime: dayTime?.start || defaultStart,    // ✅ "HH:MM"
+        endTime: dayTime?.end || defaultEnd,          // ✅ "HH:MM"
+      };
+    });
 
-  // ✅ Helper: convert "14:00" → "1970-01-01T14:00:00.000Z"
-  const toISO = (time: string) => {
-    const [h, m] = (time || '00:00').split(':').map(Number);
-    return `1970-01-01T${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:00.000Z`;
-  };
-
-  // ✅ Build 7-element array with ISO timestamps
-  const availability: any[] = dayDisplay.map((displayName, idx) => {
-    const enabled = scheduleData.working_days?.includes(displayName) || false;
-    if (!enabled) return [];
-
-    const dayTime = scheduleData.day_times?.[displayName];
-    let start = dayTime?.start || defaultStart;
-    let end = dayTime?.end || defaultEnd;
-
-    // Safety: reject midnight misconfiguration from dashboard
-    if (start === '00:00') start = defaultStart;
-
-    return [{ start: toISO(start), end: toISO(end) }];
-  });
-
-  console.log('📅 Availability payload:', JSON.stringify(availability));
+  console.log('📅 Availability:', JSON.stringify(availability));
 
   const eventTimeZone = scheduleData.timezone || client.timezone || 'America/New_York';
   const bufferTime = scheduleData.buffer_time ?? client.buffer_time ?? 15;
@@ -66,7 +55,11 @@ export async function ensureCalEventType(client: any, scheduleData: any) {
 
     let res = await fetch('https://api.cal.com/v2/event-types', {
       method: 'POST',
-      headers: { Authorization: `Bearer ${CALCOM_API_KEY}`, 'Content-Type': 'application/json' },
+      headers: {
+        Authorization: `Bearer ${CALCOM_API_KEY}`,
+        'Content-Type': 'application/json',
+        'cal-api-version': CALCOM_API_VERSION,
+      },
       body: JSON.stringify(buildPayload(client.slug)),
     });
     if (!res.ok) {
@@ -74,7 +67,11 @@ export async function ensureCalEventType(client: any, scheduleData: any) {
       if (errText.includes('already has an event type with this slug')) {
         res = await fetch('https://api.cal.com/v2/event-types', {
           method: 'POST',
-          headers: { Authorization: `Bearer ${CALCOM_API_KEY}`, 'Content-Type': 'application/json' },
+          headers: {
+            Authorization: `Bearer ${CALCOM_API_KEY}`,
+            'Content-Type': 'application/json',
+            'cal-api-version': CALCOM_API_VERSION,
+          },
           body: JSON.stringify(buildPayload(`${client.slug}-${Date.now()}`)),
         });
       }
@@ -93,53 +90,78 @@ export async function ensureCalEventType(client: any, scheduleData: any) {
     console.log(`✅ Event created: ID=${eventTypeId}`);
   }
 
-  // ── STEP 2: Get default schedule ──
+  // ── STEP 2: Get the user's current default schedule ID ──
   const meRes = await fetch('https://api.cal.com/v2/me', {
-    headers: { Authorization: `Bearer ${CALCOM_API_KEY}` },
+    headers: {
+      Authorization: `Bearer ${CALCOM_API_KEY}`,
+      'cal-api-version': CALCOM_API_VERSION,
+    },
   });
   const me = meRes.ok ? (await meRes.json()).data : null;
-  const scheduleId: number | null = me?.defaultScheduleId ?? null;
-  console.log(`📊 User default schedule ID: ${scheduleId}`);
+  const oldScheduleId: number | null = me?.defaultScheduleId ?? null;
+  console.log(`📊 Current default schedule ID: ${oldScheduleId}`);
 
-  if (!scheduleId) {
-    console.error('❌ No default schedule found.');
-    return null;
+  // ── STEP 3: Delete the old schedule (frees the isDefault slot) ──
+  if (oldScheduleId) {
+    console.log(`🗑️ Deleting old schedule ${oldScheduleId}...`);
+    const delRes = await fetch(`https://api.cal.com/v2/schedules/${oldScheduleId}`, {
+      method: 'DELETE',
+      headers: {
+        Authorization: `Bearer ${CALCOM_API_KEY}`,
+        'cal-api-version': CALCOM_API_VERSION,
+      },
+    });
+    console.log(delRes.ok ? '✅ Old schedule deleted' : '⚠️ Delete failed (continuing)');
   }
 
-  // ── STEP 3: Update schedule with ISO timestamps ──
-  const schedulePayload = {
-    name: `Schedule for ${client.slug}`,
-    timeZone: eventTimeZone,
-    isDefault: true,
-    availability,
-  };
-
-  console.log(`🔄 Updating schedule ${scheduleId}...`);
-  const updSchedRes = await fetch(`https://api.cal.com/v2/schedules/${scheduleId}`, {
-    method: 'PATCH',
-    headers: { Authorization: `Bearer ${CALCOM_API_KEY}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify(schedulePayload),
+  // ── STEP 4: Create the new schedule with correct availability ──
+  console.log('🆕 Creating new schedule...');
+  const createRes = await fetch('https://api.cal.com/v2/schedules', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${CALCOM_API_KEY}`,
+      'Content-Type': 'application/json',
+      'cal-api-version': CALCOM_API_VERSION,
+    },
+    body: JSON.stringify({
+      name: `Schedule for ${client.slug}`,
+      timeZone: eventTimeZone,
+      isDefault: true,
+      availability,
+    }),
   });
 
-  if (!updSchedRes.ok) {
-    console.error('❌ Schedule update failed:', await updSchedRes.text());
+  if (!createRes.ok) {
+    console.error('❌ Schedule creation failed:', await createRes.text());
     return null;
   }
+  const newScheduleData = await createRes.json();
+  const newScheduleId: number = newScheduleData.data.id;
+  console.log(`✅ New schedule created: ${newScheduleId}`);
+  console.log(`🔎 Stored availability:`, JSON.stringify(newScheduleData.data.availability));
 
-  const updSchedData = await updSchedRes.json();
-  console.log('🔎 Stored availability:', JSON.stringify(updSchedData.data?.availability));
-
-  // ── STEP 4: Update buffer + timezone on event type ──
-  await fetch(`https://api.cal.com/v2/event-types/${eventTypeId}`, {
+  // ── STEP 5: Attach new schedule + buffer to event type ──
+  const patchEventRes = await fetch(`https://api.cal.com/v2/event-types/${eventTypeId}`, {
     method: 'PATCH',
-    headers: { Authorization: `Bearer ${CALCOM_API_KEY}`, 'Content-Type': 'application/json' },
+    headers: {
+      Authorization: `Bearer ${CALCOM_API_KEY}`,
+      'Content-Type': 'application/json',
+      'cal-api-version': CALCOM_API_VERSION,
+    },
     body: JSON.stringify({
+      scheduleId: newScheduleId,
       timeZone: eventTimeZone,
       beforeEventBuffer: bufferTime,
       afterEventBuffer: bufferTime,
     }),
   });
 
-  console.log(`✅ Cal.com updated: eventType=${eventTypeId}, schedule=${scheduleId}`);
+  if (!patchEventRes.ok) {
+    console.error('⚠️ Event type attach failed:', await patchEventRes.text());
+  } else {
+    console.log(`✅ Event type ${eventTypeId} attached to schedule ${newScheduleId}`);
+  }
+
+  console.log(`🎉 Cal.com sync complete for ${client.slug}`);
   return { eventTypeId, eventSlug };
 }
