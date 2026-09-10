@@ -20,10 +20,10 @@ export async function ensureCalEventType(client: any, scheduleData: any) {
     const dayTime = scheduleData.day_times?.[dayName] || { start: defaultStart, end: defaultEnd };
     const enabled = scheduleData.working_days?.includes(dayName) || false;
     return {
-      day,
+      days: [day],                              // ✅ Cal.com v2 uses "days" as array
       startTime: dayTime.start || defaultStart,
       endTime: dayTime.end || defaultEnd,
-      enabled,
+      isEnabled: enabled,                       // ✅ renamed from "enabled"
     };
   });
 
@@ -33,11 +33,9 @@ export async function ensureCalEventType(client: any, scheduleData: any) {
   let eventTypeId: number | null = client.cal_event_id || null;
   let eventSlug: string = client.cal_event_slug || client.slug;
 
-  // ────────────────────────────────────────────────────────────────
-  // STEP 1: Create event type ONCE if we don't have an ID yet
-  // ────────────────────────────────────────────────────────────────
+  // ── STEP 1: Create event type ONCE if no ID ──
   if (!eventTypeId) {
-    console.log('🆕 No cal_event_id — creating event type for the first time...');
+    console.log('🆕 No cal_event_id — creating event type...');
 
     const buildPayload = (slugToUse: string) => ({
       title: `${client.business_name} Booking`,
@@ -66,7 +64,7 @@ export async function ensureCalEventType(client: any, scheduleData: any) {
     if (!createRes.ok) {
       const errText = await createRes.text();
       if (errText.includes('already has an event type with this slug')) {
-        console.log('⚠️ Slug in use — trying with a suffix...');
+        console.log('⚠️ Slug in use — using unique slug...');
         const retryRes = await fetch('https://api.cal.com/v2/event-types', {
           method: 'POST',
           headers: {
@@ -97,15 +95,14 @@ export async function ensureCalEventType(client: any, scheduleData: any) {
       .update({ cal_event_id: eventTypeId, cal_event_slug: eventSlug })
       .eq('id', client.id);
 
-    console.log(`✅ Cal.com event type created: ID=${eventTypeId}, slug=${eventSlug}`);
+    console.log(`✅ Cal.com event created: ID=${eventTypeId}, slug=${eventSlug}`);
   }
 
-  // ────────────────────────────────────────────────────────────────
-  // STEP 2: Update the schedule (create or update)
-  // ────────────────────────────────────────────────────────────────
+  // ── STEP 2: Create or update schedule ──
   const schedulePayload = {
     name: `Schedule for ${client.slug}`,
     timeZone: eventTimeZone,
+    isDefault: true,                            // ✅ REQUIRED by Cal.com v2
     availability,
   };
 
@@ -120,6 +117,7 @@ export async function ensureCalEventType(client: any, scheduleData: any) {
   let scheduleId = existing.scheduleId;
 
   if (!scheduleId) {
+    console.log('🆕 Creating schedule...');
     const createScheduleRes = await fetch('https://api.cal.com/v2/schedules', {
       method: 'POST',
       headers: {
@@ -135,6 +133,7 @@ export async function ensureCalEventType(client: any, scheduleData: any) {
       console.error('❌ Schedule creation failed:', await createScheduleRes.text());
     }
   } else {
+    console.log(`🔄 Updating schedule ${scheduleId}...`);
     const updateScheduleRes = await fetch(`https://api.cal.com/v2/schedules/${scheduleId}`, {
       method: 'PATCH',
       headers: {
@@ -150,9 +149,7 @@ export async function ensureCalEventType(client: any, scheduleData: any) {
     }
   }
 
-  // ────────────────────────────────────────────────────────────────
-  // STEP 3: PATCH the event type by ID (buffer + timezone + schedule)
-  // ────────────────────────────────────────────────────────────────
+  // ── STEP 3: PATCH event type with buffer, timezone, scheduleId ──
   const updatePayload: any = {
     timeZone: eventTimeZone,
     beforeEventBuffer: bufferTime,
