@@ -141,4 +141,4 @@ export async function ensureCalEventType(client: any, scheduleData: any) {
 
   console.log(`✅ Cal.com updated: eventType=${eventTypeId}, schedule=${scheduleId}`);
   return { eventTypeId, eventSlug };
-}s
+}
