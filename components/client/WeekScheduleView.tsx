@@ -1,13 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-
-interface DaySchedule {
-  day: string;
-  enabled: boolean;
-  start: string;
-  end: string;
-}
+import { useState, useEffect, useMemo } from 'react';
 
 interface WeekScheduleViewProps {
   working_days: string[];
@@ -18,12 +11,19 @@ interface WeekScheduleViewProps {
   readOnly?: boolean;
   onDayTimeChange?: (day: string, start: string, end: string) => void;
   dayTimes?: { [key: string]: { start: string; end: string } };
-  // ✅ NEW: Buffer time prop
   buffer_time?: number;
   onBufferTimeChange?: (minutes: number) => void;
 }
 
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+
+// ✅ Sanitize a time string: reject empty, "00:00", or anything not HH:MM
+const sanitizeTime = (value: string, fallback: string): string => {
+  if (!value || value === '00:00' || !/^\d{2}:\d{2}$/.test(value)) {
+    return fallback;
+  }
+  return value;
+};
 
 export default function WeekScheduleView({
   working_days,
@@ -37,9 +37,11 @@ export default function WeekScheduleView({
   buffer_time = 15,
   onBufferTimeChange,
 }: WeekScheduleViewProps) {
-  const [weekDays, setWeekDays] = useState<any[]>([]);
+  const defaultStart = sanitizeTime(working_hours_start, '09:00');
+  const defaultEnd = sanitizeTime(working_hours_end, '17:00');
 
-  useEffect(() => {
+  // ✅ Memoize so it doesn't recompute on every parent render
+  const weekDays = useMemo(() => {
     const today = new Date();
     const nextDays = [];
     for (let i = 0; i < 6; i++) {
@@ -52,28 +54,33 @@ export default function WeekScheduleView({
 
       const daySchedule = dayTimes[dayName] || {};
       const isEnabled = working_days.includes(dayName);
+
+      // ✅ Sanitize both start and end
+      const safeStart = sanitizeTime(daySchedule.start, defaultStart);
+      const safeEnd = sanitizeTime(daySchedule.end, defaultEnd);
+
       nextDays.push({
         key: dayName,
         label: isToday ? `Today (${dayName})` : dayName,
         date: dateStr,
         isToday,
         enabled: isEnabled,
-        start: daySchedule.start || working_hours_start || '09:00',
-        end: daySchedule.end || working_hours_end || '17:00',
+        start: safeStart,
+        end: safeEnd,
       });
     }
-    setWeekDays(nextDays);
-  }, [working_days, working_hours_start, working_hours_end, dayTimes]);
+    return nextDays;
+  }, [working_days, defaultStart, defaultEnd, dayTimes]);
 
   const handleDayTimeChangeLocal = (dayKey: string, start: string, end: string) => {
-    if (onDayTimeChange) {
-      onDayTimeChange(dayKey, start, end);
-    }
-  };
+    if (!onDayTimeChange) return;
 
-  const handleDayToggleLocal = (day: string) => {
-    console.log('🔄 Toggling day:', day);
-    onDayToggle(day);
+    // ✅ Sanitize before propagating
+    const safeStart = sanitizeTime(start, defaultStart);
+    const safeEnd = sanitizeTime(end, defaultEnd);
+
+    console.log('⏰ Time change:', dayKey, safeStart, safeEnd);
+    onDayTimeChange(dayKey, safeStart, safeEnd);
   };
 
   return (
@@ -113,7 +120,7 @@ export default function WeekScheduleView({
             {/* Day header with toggle */}
             <div
               className={`text-center ${!readOnly ? 'cursor-pointer' : ''}`}
-              onClick={() => !readOnly && handleDayToggleLocal(day.key)}
+              onClick={() => !readOnly && onDayToggle(day.key)}
             >
               <div className="text-xs text-gray-500 dark:text-gray-400">{day.date}</div>
               <div className="text-xs sm:text-sm font-semibold mt-1 truncate text-gray-700 dark:text-gray-300">
@@ -128,27 +135,19 @@ export default function WeekScheduleView({
                 <input
                   type="time"
                   value={day.start}
-                  onChange={(e) => {
-                    const newStart = e.target.value;
-                    console.log('⏰ Start time changed:', day.key, newStart);
-                    handleDayTimeChangeLocal(day.key, newStart, day.end);
-                  }}
+                  onChange={(e) => handleDayTimeChangeLocal(day.key, e.target.value, day.end)}
                   className="w-full text-xs border border-gray-300 dark:border-gray-600 rounded px-1.5 py-1 focus:ring-1 focus:ring-[#4285F4] outline-none bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                 />
                 <input
                   type="time"
                   value={day.end}
-                  onChange={(e) => {
-                    const newEnd = e.target.value;
-                    console.log('⏰ End time changed:', day.key, newEnd);
-                    handleDayTimeChangeLocal(day.key, day.start, newEnd);
-                  }}
+                  onChange={(e) => handleDayTimeChangeLocal(day.key, day.start, e.target.value)}
                   className="w-full text-xs border border-gray-300 dark:border-gray-600 rounded px-1.5 py-1 focus:ring-1 focus:ring-[#4285F4] outline-none bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                 />
               </div>
             )}
 
-            {/* Show times for enabled days in read-only mode */}
+            {/* Read-only display */}
             {day.enabled && readOnly && (
               <div className="mt-2 text-center">
                 <div className="text-[10px] text-gray-500 dark:text-gray-400">
@@ -167,10 +166,10 @@ export default function WeekScheduleView({
             <label className="block text-xs font-medium text-gray-500 dark:text-gray-400">Default Start Time</label>
             <input
               type="time"
-              value={working_hours_start || '09:00'}
+              value={defaultStart}
               onChange={(e) => {
-                console.log('⏰ Default start changed:', e.target.value);
-                onHoursChange(e.target.value, working_hours_end || '17:00');
+                const v = sanitizeTime(e.target.value, '09:00');
+                onHoursChange(v, defaultEnd);
               }}
               className="mt-1 w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-1.5 text-sm focus:ring-2 focus:ring-[#4285F4] outline-none bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
             />
@@ -180,10 +179,10 @@ export default function WeekScheduleView({
             <label className="block text-xs font-medium text-gray-500 dark:text-gray-400">Default End Time</label>
             <input
               type="time"
-              value={working_hours_end || '17:00'}
+              value={defaultEnd}
               onChange={(e) => {
-                console.log('⏰ Default end changed:', e.target.value);
-                onHoursChange(working_hours_start || '09:00', e.target.value);
+                const v = sanitizeTime(e.target.value, '17:00');
+                onHoursChange(defaultStart, v);
               }}
               className="mt-1 w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-1.5 text-sm focus:ring-2 focus:ring-[#4285F4] outline-none bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
             />

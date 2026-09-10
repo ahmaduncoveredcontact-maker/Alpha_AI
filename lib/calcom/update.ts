@@ -14,27 +14,28 @@ export async function ensureCalEventType(client: any, scheduleData: any) {
   const defaultStart = scheduleData.working_hours_start || '09:00';
   const defaultEnd = scheduleData.working_hours_end || '17:00';
 
-  // Day index order for Cal.com: 0=Sun, 1=Mon, ..., 6=Sat
-  const dayMap = [
-    { key: 'sunday',    name: 'Sunday' },
-    { key: 'monday',    name: 'Monday' },
-    { key: 'tuesday',   name: 'Tuesday' },
-    { key: 'wednesday', name: 'Wednesday' },
-    { key: 'thursday',  name: 'Thursday' },
-    { key: 'friday',    name: 'Friday' },
-    { key: 'saturday',  name: 'Saturday' },
-  ];
+  const dayOrder = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+  const dayDisplay = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
-  // ✅ Build availability as 7-element indexed array (Cal.com v2 format)
-  const availability: any[] = dayMap.map(({ name }) => {
-    const enabled = scheduleData.working_days?.includes(name) || false;
+  // ✅ Helper: convert "14:00" → "1970-01-01T14:00:00.000Z"
+  const toISO = (time: string) => {
+    const [h, m] = (time || '00:00').split(':').map(Number);
+    return `1970-01-01T${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:00.000Z`;
+  };
+
+  // ✅ Build 7-element array with ISO timestamps
+  const availability: any[] = dayDisplay.map((displayName, idx) => {
+    const enabled = scheduleData.working_days?.includes(displayName) || false;
     if (!enabled) return [];
 
-    const dayTime = scheduleData.day_times?.[name];
-    const start = dayTime?.start || defaultStart;
-    const end = dayTime?.end || defaultEnd;
+    const dayTime = scheduleData.day_times?.[displayName];
+    let start = dayTime?.start || defaultStart;
+    let end = dayTime?.end || defaultEnd;
 
-    return [{ start, end }];   // ✅ { start: "HH:MM", end: "HH:MM" }
+    // Safety: reject midnight misconfiguration from dashboard
+    if (start === '00:00') start = defaultStart;
+
+    return [{ start: toISO(start), end: toISO(end) }];
   });
 
   console.log('📅 Availability payload:', JSON.stringify(availability));
@@ -92,7 +93,7 @@ export async function ensureCalEventType(client: any, scheduleData: any) {
     console.log(`✅ Event created: ID=${eventTypeId}`);
   }
 
-  // ── STEP 2: Get the schedule ID ──
+  // ── STEP 2: Get default schedule ──
   const meRes = await fetch('https://api.cal.com/v2/me', {
     headers: { Authorization: `Bearer ${CALCOM_API_KEY}` },
   });
@@ -105,12 +106,12 @@ export async function ensureCalEventType(client: any, scheduleData: any) {
     return null;
   }
 
-  // ── STEP 3: Update the schedule with the CORRECT availability format ──
+  // ── STEP 3: Update schedule with ISO timestamps ──
   const schedulePayload = {
     name: `Schedule for ${client.slug}`,
     timeZone: eventTimeZone,
     isDefault: true,
-    availability,               // ✅ 7-element indexed array
+    availability,
   };
 
   console.log(`🔄 Updating schedule ${scheduleId}...`);
