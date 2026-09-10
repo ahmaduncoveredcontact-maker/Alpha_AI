@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useTheme } from './ThemeContext';
 import Sidebar from './Sidebar';
 import DashboardOverview from './DashboardOverview';
@@ -70,6 +70,7 @@ export default function ClientDashboardClient({
   bookings: number;
 }) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { theme, toggleTheme } = useTheme();
   const [activeTab, setActiveTab] = useState('dashboard');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -91,20 +92,18 @@ export default function ClientDashboardClient({
     address: '',
   });
 
+  // Sync activeTab with URL query param (handles back/forward)
+  useEffect(() => {
+    const tab = searchParams.get('tab') || 'dashboard';
+    setActiveTab(tab);
+  }, [searchParams]);
+
   const handleNavigate = (tab: string) => {
     setActiveTab(tab);
     setIsMobileMenuOpen(false);
     const url = `/live/${client.slug}?tab=${tab}`;
-    router.replace(url, { scroll: false });
+    router.push(url, { scroll: false });
   };
-
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const tab = params.get('tab');
-    if (tab) {
-      setActiveTab(tab);
-    }
-  }, []);
 
   const refreshCalls = async () => {
     const res = await fetch(`/api/client/${client.slug}/calls`, { credentials: 'include' });

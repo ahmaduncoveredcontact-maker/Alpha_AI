@@ -35,14 +35,14 @@ export default function DashboardOverview({
   const isGbpConnected = !!client.gbp_access_token;
 
   const quickActions = [
-    {
-      id: 'qr-code',
-      label: 'Collect Google Reviews',
-      description: 'Show QR code to customers',
-      icon: QrCode,
-      color: 'border-blue-300 dark:border-blue-700 hover:border-blue-400',
-      iconColor: 'text-blue-600 dark:text-blue-400',
-    },
+   {
+  id: 'qr-code',
+  label: 'Collect Google Reviews',
+  description: 'A working system to collect reviews',   // <-- updated
+  icon: QrCode,
+  color: 'border-blue-300 dark:border-blue-700 hover:border-blue-400',
+  iconColor: 'text-blue-600 dark:text-blue-400',
+  },
     {
       id: 'appointments',
       label: 'Appointments',
