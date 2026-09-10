@@ -35,8 +35,7 @@ export async function ensureCalEventType(client: any, scheduleData: any) {
 
   // ── STEP 1: Create event type if needed ──
   if (!eventTypeId) {
-    console.log('🆕 No cal_event_id — creating event type...');
-
+    console.log('🆕 Creating event type...');
     const buildPayload = (slugToUse: string) => ({
       title: `${client.business_name} Booking`,
       slug: slugToUse,
@@ -57,7 +56,6 @@ export async function ensureCalEventType(client: any, scheduleData: any) {
       headers: { Authorization: `Bearer ${CALCOM_API_KEY}`, 'Content-Type': 'application/json' },
       body: JSON.stringify(buildPayload(client.slug)),
     });
-
     if (!res.ok) {
       const errText = await res.text();
       if (errText.includes('already has an event type with this slug')) {
@@ -68,37 +66,35 @@ export async function ensureCalEventType(client: any, scheduleData: any) {
         });
       }
       if (!res.ok) {
-        console.error('❌ Cal.com creation failed:', await res.text());
+        console.error('❌ Creation failed:', await res.text());
         return null;
       }
     }
-
     const data = await res.json();
     eventTypeId = data.data.id;
     eventSlug = data.data.slug;
-
     await supabaseAdmin
       .from('clients')
       .update({ cal_event_id: eventTypeId, cal_event_slug: eventSlug })
       .eq('id', client.id);
-
-    console.log(`✅ Cal.com event created: ID=${eventTypeId}, slug=${eventSlug}`);
+    console.log(`✅ Event created: ID=${eventTypeId}`);
   }
 
-  // ── STEP 2: Update the event type's OWN schedule (not a shared one) ──
-  // We use the event type's `schedule` field. Create it if null.
-
+  // ── STEP 2: Find the schedule to update ──
   const getRes = await fetch(`https://api.cal.com/v2/event-types/${eventTypeId}`, {
     headers: { Authorization: `Bearer ${CALCOM_API_KEY}` },
   });
-  if (!getRes.ok) {
-    console.error('❌ Failed to fetch event type:', await getRes.text());
-    return null;
-  }
   const existing = (await getRes.json()).data;
-  const attachedScheduleId: number | null = existing.scheduleId ?? existing.schedule ?? null;
-  console.log(`📊 Attached schedule ID: ${attachedScheduleId}`);
 
+  const scheduleId: number | null =
+    existing.scheduleId ??
+    existing.schedule ??
+    existing.users?.[0]?.defaultScheduleId ??
+    null;
+
+  console.log(`📊 Schedule ID to update: ${scheduleId}`);
+
+  // ── STEP 3: Update the schedule ──
   const schedulePayload = {
     name: `Schedule for ${client.slug}`,
     timeZone: eventTimeZone,
@@ -106,64 +102,51 @@ export async function ensureCalEventType(client: any, scheduleData: any) {
     availability,
   };
 
-  let finalScheduleId: number;
-
-  if (attachedScheduleId) {
-    // UPDATE the existing schedule
-    console.log(`🔄 Updating schedule ${attachedScheduleId}...`);
-    const updRes = await fetch(`https://api.cal.com/v2/schedules/${attachedScheduleId}`, {
-      method: 'PATCH',
-      headers: { Authorization: `Bearer ${CALCOM_API_KEY}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify(schedulePayload),
-    });
-    if (!updRes.ok) {
-      console.error('❌ Schedule update failed:', await updRes.text());
-      return null;
-    }
-    finalScheduleId = attachedScheduleId;
-    console.log(`✅ Schedule updated: ${finalScheduleId}`);
-  } else {
-    // CREATE a new schedule
-    console.log('🆕 No schedule attached — creating one...');
-    const crRes = await fetch('https://api.cal.com/v2/schedules', {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${CALCOM_API_KEY}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify(schedulePayload),
-    });
-    if (!crRes.ok) {
-      console.error('❌ Schedule creation failed:', await crRes.text());
-      return null;
-    }
-    finalScheduleId = (await crRes.json()).data.id;
-    console.log(`✅ Schedule created: ${finalScheduleId}`);
-  }
-
-  // ── STEP 3: Attach the schedule + buffer to the event type ──
-  const updatePayload: any = {
-    timeZone: eventTimeZone,
-    beforeEventBuffer: bufferTime,
-    afterEventBuffer: bufferTime,
-    scheduleId: finalScheduleId,   // ✅ always attach
-  };
-
-  const updEventRes = await fetch(`https://api.cal.com/v2/event-types/${eventTypeId}`, {
+  const updSchedRes = await fetch(`https://api.cal.com/v2/schedules/${scheduleId}`, {
     method: 'PATCH',
     headers: { Authorization: `Bearer ${CALCOM_API_KEY}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify(updatePayload),
+    body: JSON.stringify(schedulePayload),
   });
-
-  if (!updEventRes.ok) {
-    console.error('❌ Event type update failed:', await updEventRes.text());
+  if (!updSchedRes.ok) {
+    console.error('❌ Schedule update failed:', await updSchedRes.text());
     return null;
   }
+  console.log(`✅ Schedule ${scheduleId} updated`);
 
-  // ── STEP 4: Verify the schedule is now attached ──
-  const verifyRes = await fetch(`https://api.cal.com/v2/event-types/${eventTypeId}`, {
+  // ── STEP 4: Attach schedule to event type ──
+  // Try "scheduleId" first, then fall back to "schedule"
+  const tryPatch = async (field: string) => {
+    const body: any = {
+      timeZone: eventTimeZone,
+      beforeEventBuffer: bufferTime,
+      afterEventBuffer: bufferTime,
+      [field]: scheduleId,
+    };
+    return fetch(`https://api.cal.com/v2/event-types/${eventTypeId}`, {
+      method: 'PATCH',
+      headers: { Authorization: `Bearer ${CALCOM_API_KEY}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+  };
+
+  await tryPatch('scheduleId');
+  let verifyRes = await fetch(`https://api.cal.com/v2/event-types/${eventTypeId}`, {
     headers: { Authorization: `Bearer ${CALCOM_API_KEY}` },
   });
-  const verified = (await verifyRes.json()).data;
-  console.log(`🔎 Verified attached schedule: ${verified.scheduleId ?? verified.schedule ?? 'null'}`);
+  let verified = (await verifyRes.json()).data;
+  let attached = verified.scheduleId ?? verified.schedule ?? null;
 
+  if (!attached) {
+    console.log('⚠️ "scheduleId" didn\'t attach — retrying with "schedule"...');
+    await tryPatch('schedule');
+    verifyRes = await fetch(`https://api.cal.com/v2/event-types/${eventTypeId}`, {
+      headers: { Authorization: `Bearer ${CALCOM_API_KEY}` },
+    });
+    verified = (await verifyRes.json()).data;
+    attached = verified.scheduleId ?? verified.schedule ?? null;
+  }
+
+  console.log(`🔎 Final attached schedule: ${attached}`);
   console.log(`✅ Cal.com event type updated: ID=${eventTypeId}`);
   return { eventTypeId, eventSlug };
 }
