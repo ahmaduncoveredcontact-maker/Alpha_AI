@@ -20,10 +20,10 @@ export async function ensureCalEventType(client: any, scheduleData: any) {
     const dayTime = scheduleData.day_times?.[dayName] || { start: defaultStart, end: defaultEnd };
     const enabled = scheduleData.working_days?.includes(dayName) || false;
     return {
-      days: [day],                              // ✅ Cal.com v2 uses "days" as array
+      days: [day],
       startTime: dayTime.start || defaultStart,
       endTime: dayTime.end || defaultEnd,
-      isEnabled: enabled,                       // ✅ renamed from "enabled"
+      isEnabled: enabled,
     };
   });
 
@@ -64,7 +64,6 @@ export async function ensureCalEventType(client: any, scheduleData: any) {
     if (!createRes.ok) {
       const errText = await createRes.text();
       if (errText.includes('already has an event type with this slug')) {
-        console.log('⚠️ Slug in use — using unique slug...');
         const retryRes = await fetch('https://api.cal.com/v2/event-types', {
           method: 'POST',
           headers: {
@@ -98,14 +97,7 @@ export async function ensureCalEventType(client: any, scheduleData: any) {
     console.log(`✅ Cal.com event created: ID=${eventTypeId}, slug=${eventSlug}`);
   }
 
-  // ── STEP 2: Create or update schedule ──
-  const schedulePayload = {
-    name: `Schedule for ${client.slug}`,
-    timeZone: eventTimeZone,
-    isDefault: true,                            // ✅ REQUIRED by Cal.com v2
-    availability,
-  };
-
+  // ── STEP 2: Fetch existing event to get the CURRENT scheduleId ──
   const getRes = await fetch(`https://api.cal.com/v2/event-types/${eventTypeId}`, {
     headers: { Authorization: `Bearer ${CALCOM_API_KEY}` },
   });
@@ -114,10 +106,36 @@ export async function ensureCalEventType(client: any, scheduleData: any) {
     return null;
   }
   const existing = (await getRes.json()).data;
-  let scheduleId = existing.scheduleId;
 
-  if (!scheduleId) {
-    console.log('🆕 Creating schedule...');
+  // ✅ THE FIX: response uses "schedule", not "scheduleId"
+  let scheduleId: number | null = existing.scheduleId || existing.schedule || null;
+  console.log(`📊 Existing scheduleId: ${scheduleId}`);
+
+  const schedulePayload = {
+    name: `Schedule for ${client.slug}`,
+    timeZone: eventTimeZone,
+    isDefault: true,
+    availability,
+  };
+
+  // ── STEP 3: Update the EXISTING schedule (or create one) ──
+  if (scheduleId) {
+    console.log(`🔄 Updating existing schedule ${scheduleId}...`);
+    const updateScheduleRes = await fetch(`https://api.cal.com/v2/schedules/${scheduleId}`, {
+      method: 'PATCH',
+      headers: {
+        Authorization: `Bearer ${CALCOM_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(schedulePayload),
+    });
+    if (updateScheduleRes.ok) {
+      console.log(`✅ Schedule updated: ${scheduleId}`);
+    } else {
+      console.error('❌ Schedule update failed:', await updateScheduleRes.text());
+    }
+  } else {
+    console.log('🆕 No schedule attached — creating one...');
     const createScheduleRes = await fetch('https://api.cal.com/v2/schedules', {
       method: 'POST',
       headers: {
@@ -132,24 +150,9 @@ export async function ensureCalEventType(client: any, scheduleData: any) {
     } else {
       console.error('❌ Schedule creation failed:', await createScheduleRes.text());
     }
-  } else {
-    console.log(`🔄 Updating schedule ${scheduleId}...`);
-    const updateScheduleRes = await fetch(`https://api.cal.com/v2/schedules/${scheduleId}`, {
-      method: 'PATCH',
-      headers: {
-        Authorization: `Bearer ${CALCOM_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(schedulePayload),
-    });
-    if (updateScheduleRes.ok) {
-      console.log(`✅ Schedule updated: ${scheduleId}`);
-    } else {
-      console.error('❌ Schedule update failed:', await updateScheduleRes.text());
-    }
   }
 
-  // ── STEP 3: PATCH event type with buffer, timezone, scheduleId ──
+  // ── STEP 4: PATCH event type with buffer, timezone, and scheduleId ──
   const updatePayload: any = {
     timeZone: eventTimeZone,
     beforeEventBuffer: bufferTime,
