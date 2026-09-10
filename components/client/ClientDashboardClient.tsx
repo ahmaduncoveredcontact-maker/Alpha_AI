@@ -45,16 +45,16 @@ interface Client {
   day_times?: { [key: string]: { start: string; end: string } };
   gbp_access_token?: string;
   
-  // ✅ NEW: Call minute fields
+  // Call minute fields
   call_minute_limit?: number;
   call_priority?: string;
   minutes_used?: number;
   plan_start_date?: string;
   next_reset_date?: string;
   last_reset_date?: string;
-  // ✅ NEW: Appointment duration
+  // Appointment duration
   event_length?: number;
-  // ✅ NEW: Buffer time
+  // Buffer time
   buffer_time?: number;
 }
 
@@ -76,7 +76,7 @@ export default function ClientDashboardClient({
   const [calls, setCalls] = useState<CallLog[]>(initialCalls);
   const [savingSchedule, setSavingSchedule] = useState(false);
 
-  // ✅ Client state so it can be updated after schedule changes
+  // Client state so it can be updated after schedule changes
   const [client, setClient] = useState<Client>(initialClient);
 
   // Edit modal state
@@ -114,43 +114,41 @@ export default function ClientDashboardClient({
     }
   };
 
-  // ✅ Update schedule – returns updated client data
-const updateSchedule = async (data: any) => {
-  setSavingSchedule(true);
-  try {
-    const res = await fetch(`/api/client/${client.slug}/schedule`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify(data),
-    });
-    
-    if (!res.ok) {
-      let errorMsg = 'Failed to update schedule.';
-      try {
-        const errorData = await res.json();
-        errorMsg = errorData.error || errorMsg;
-      } catch (e) {
-        // If response is not JSON, use status text
-        errorMsg = `Error ${res.status}: ${res.statusText}`;
+  // Update schedule – returns updated client data
+  const updateSchedule = async (data: any) => {
+    setSavingSchedule(true);
+    try {
+      const res = await fetch(`/api/client/${client.slug}/schedule`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(data),
+      });
+      
+      if (!res.ok) {
+        let errorMsg = 'Failed to update schedule.';
+        try {
+          const errorData = await res.json();
+          errorMsg = errorData.error || errorMsg;
+        } catch (e) {
+          errorMsg = `Error ${res.status}: ${res.statusText}`;
+        }
+        throw new Error(errorMsg);
       }
-      throw new Error(errorMsg);
+      
+      const result = await res.json();
+      if (result.client) {
+        console.log('✅ Schedule updated, new client data:', result.client);
+        setClient(result.client);
+      }
+      await refreshCalls();
+    } catch (err: any) {
+      console.error('Schedule update error:', err);
+      alert(`Failed to update schedule: ${err.message}`);
+    } finally {
+      setSavingSchedule(false);
     }
-    
-    const result = await res.json();
-    if (result.client) {
-      console.log('✅ Schedule updated, new client data:', result.client);
-      setClient(result.client);
-    }
-    await refreshCalls();
-    // Show success feedback (optional)
-  } catch (err: any) {
-    console.error('Schedule update error:', err);
-    alert(`Failed to update schedule: ${err.message}`);
-  } finally {
-    setSavingSchedule(false);
-  }
-};
+  };
 
   const handleEdit = (call: CallLog) => {
     setEditingCall(call);
@@ -230,23 +228,18 @@ const updateSchedule = async (data: any) => {
           />
         );
       case 'settings':
+        return <SettingsPage client={client} />;
+      default:
         return (
-          <SettingsPage
-            webhookUrl={client.webhook_url}
-            businessName={client.business_name}
-            slug={client.slug}
+          <DashboardOverview
+            client={client}
+            totalCalls={initialTotalCalls}
+            bookings={initialBookings}
+            onNavigate={handleNavigate}
           />
         );
-      default:
-        return <DashboardOverview client={client} totalCalls={initialTotalCalls} bookings={initialBookings} onNavigate={handleNavigate} />;
     }
   };
-
-  // Calculate remaining minutes
-  const remainingMinutes = Math.max(0, (client.call_minute_limit || 500) - (client.minutes_used || 0));
-  const daysUntilReset = client.next_reset_date
-    ? Math.ceil((new Date(client.next_reset_date).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))
-    : 0;
 
   return (
     <div className="flex min-h-screen bg-gray-50 dark:bg-gray-950">
@@ -281,58 +274,6 @@ const updateSchedule = async (data: any) => {
 
       {/* Main Content */}
       <main className="flex-1 p-4 sm:p-6 lg:p-8 overflow-y-auto w-full mt-16 lg:mt-16 min-h-screen lg:ml-64">
-        {/* ======== CALL MINUTES SECTION ======== */}
-        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-6 border border-gray-100 dark:border-gray-700 mb-6">
-          <h3 className="font-semibold text-gray-800 dark:text-white mb-4 flex items-center gap-2">
-            📞 Call Minutes
-          </h3>
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4">
-            <div>
-              <p className="text-sm text-gray-500 dark:text-gray-400">Used</p>
-              <p className="text-xl font-bold text-gray-900 dark:text-white">{client.minutes_used || 0} min</p>
-            </div>
-            <div>
-              <p className="text-sm text-gray-500 dark:text-gray-400">Limit</p>
-              <p className="text-xl font-bold text-gray-900 dark:text-white">
-                {client.call_minute_limit === 0 ? '♾️ Unlimited' : `${client.call_minute_limit || 500} min`}
-              </p>
-            </div>
-            <div>
-              <p className="text-sm text-gray-500 dark:text-gray-400">Remaining</p>
-              <p className={`text-xl font-bold ${
-                remainingMinutes < 50 && remainingMinutes > 0
-                  ? 'text-red-600 dark:text-red-400'
-                  : remainingMinutes === 0
-                  ? 'text-red-600 dark:text-red-400'
-                  : 'text-green-600 dark:text-green-400'
-              }`}>
-                {client.call_minute_limit === 0 ? '♾️' : remainingMinutes} min
-              </p>
-            </div>
-            <div>
-              <p className="text-sm text-gray-500 dark:text-gray-400">Priority</p>
-              <span className={`inline-flex px-3 py-1 rounded-full text-sm font-medium ${
-                client.call_priority === 'premium'
-                  ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400'
-                  : client.call_priority === 'priority'
-                  ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
-                  : 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300'
-              }`}>
-                {client.call_priority || 'Standard'}
-              </span>
-            </div>
-            <div>
-              <p className="text-sm text-gray-500 dark:text-gray-400">Next Reset</p>
-              <p className="text-sm font-semibold text-gray-900 dark:text-white">
-                {client.next_reset_date ? new Date(client.next_reset_date).toLocaleDateString() : 'N/A'}
-              </p>
-              {daysUntilReset > 0 && (
-                <p className="text-xs text-gray-400 dark:text-gray-500">{daysUntilReset} days remaining</p>
-              )}
-            </div>
-          </div>
-        </div>
-
         {renderContent()}
       </main>
 
